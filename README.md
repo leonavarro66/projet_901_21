@@ -4,6 +4,47 @@
 
 Le groupe de travail est constitué de Romain BIOU, Mathieu SALA et Léo NAVARRO
 
+## Installation de l'espace de travail
+
+Lorsque vous arrivez sur votre session Onyxia, vous clonez le dépôt Git avec la commande suivante :
+
+
+```bash
+git clone "https://github.com/leonavarro66/projet_901_21.git"
+```
+
+Normalement, vous aurez une arborescence du type
+
+```
+WORK
+└───data
+│   │
+│   └───project
+│       │   ...
+│   
+└───libsigma
+│   │   ...
+│
+└───projet_901_21 (dépôt git)
+│   │
+│   └───rapport
+│       │   ...
+│   └───...
+│       │   ...
+```
+
+Maintenant, il faut récupérer les données des images satellites qui sont sur le serveur de fichier Onyxia, pour ce faire, il faut exécuter la commande suivante :
+
+Vous allez les récupérer depuis mon serveur de fichiers Onyxia d'où mon pseudo dans le lien de la commande.
+
+```bash
+mc cp -r s3/leonavarrosig66/diffusion/images home/onyxia/work/data
+```
+
+Après cette commande, dans le dossier data, en plus du sous-dossier 'project', vous aurez un sous-dossier 'images' avec les données satellites.
+
+Normalement, j'ai rien oublié et on devrait tout avoir pour travailler.
+
 ## Contexte
 
 "La BD Forêt® version 2.0 est une base de données de référence pour l’espace forestier et les milieux semi-naturels. Elle constitue le référentiel géographique de description des essences forestières. Elle décrit les formations végétales forestières et naturelles par une approche de la couverture du sol traduisant une description de la densité de couvert du peuplement, de sa composition et de l’essence dominante, pour les éléments de plus de 5 000 m2 (soit 0,5 hectare). Elle est élaborée par photo-interprétation d’images en infrarouge couleurs de la BD ORTHO®. [...]
