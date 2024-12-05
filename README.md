@@ -38,7 +38,7 @@ Maintenant, il faut récupérer les données des images satellites qui sont sur 
 Vous allez les récupérer depuis mon serveur de fichiers Onyxia d'où mon pseudo dans le lien de la commande.
 
 ```bash
-mc cp -r s3/leonavarrosig66/diffusion/images home/onyxia/work/data
+mc cp -r s3/leonavarrosig66/diffusion/images /home/onyxia/work/data
 ```
 
 Après cette commande, dans le dossier data, en plus du sous-dossier 'project', vous aurez un sous-dossier 'images' avec les données satellites.
