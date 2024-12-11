@@ -174,3 +174,20 @@ def clip_geodata(
     except Exception as e:
         print(f"Une erreur est survenue : {e}")
         return None
+
+def count_polygons_by_class(gdf, class_column, selected_classes):
+    """
+    Compte le nombre de polygones par classe pour les classes sélectionnées.
+
+    :param gdf: GeoDataFrame contenant les données des polygones.
+    :param class_column: Nom de la colonne contenant les classes.
+    :param selected_classes: Liste des classes à analyser.
+    :return: Dictionnaire avec les classes comme clés et le nombre de polygones comme valeurs.
+    """
+    class_counts = {}
+
+    for cls in selected_classes:
+        count = gdf[gdf[class_column] == cls].shape[0]
+        class_counts[cls] = count
+
+    return class_counts
