@@ -73,7 +73,7 @@ bd_foret_classee = classify_geodataframe(
 
 # Sauvegarde du résultat si le traitement est réussi
 if bd_foret_classee is not None:
-    bd_foret_classee_filename = os.path.join(my_data_folder, 'project', 'bd_foret_classee.shp')
+    bd_foret_classee_filename = os.path.join(my_result_folder_out, 'sample', 'Sample_BD_foret_T31TCJ.shp')
     bd_foret_classee.to_file(bd_foret_classee_filename)
     print("Traitement terminé avec succès !")
 else:
