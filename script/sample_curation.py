@@ -9,7 +9,7 @@ import os
 import geopandas as gpd
 sys.path.append('/home/onyxia/work/libsigma')
 sys.path.append('/home/onyxia/work/projet_901_21/script')
-from my_function import classify_geodataframe, clip_geodata
+from my_function import classify_geodataframe, filter_and_clip_geodata
 
 # Fichier de données nécessaire pour le masque
 my_data_folder = '/home/onyxia/work/data'
@@ -36,6 +36,8 @@ code_mapping = {
     "Forêt fermée de sapin ou épicéa": 21,
     "Forêt fermée à mélange d’autres conifères": 21,
     "Forêt fermée de pin sylvestre pur": 22,
+    "Forêt fermée d'un autre pin pur": 22,
+    "Forêt fermée à mélange de pins purs": 22,
     "Forêt fermée de douglas pur": 23,
     "Forêt fermée de pin laricio ou pin noir pur": 24,
     "Forêt fermée de pin maritime pur": 25,
@@ -59,6 +61,8 @@ name_mapping = {
     "Forêt fermée de sapin ou épicéa": "Autres conifères autre que pin",
     "Forêt fermée à mélange d’autres conifères": "Autres conifères autre que pin",
     "Forêt fermée de pin sylvestre pur": "Autres Pin",
+    "Forêt fermée d'un autre pin pur": "Autres Pin",
+    "Forêt fermée à mélange de pins purs": "Autres Pin",
     "Forêt fermée de douglas pur": "Douglas",
     "Forêt fermée de pin laricio ou pin noir pur": "Pin laricio ou pin noir",
     "Forêt fermée de pin maritime pur": "Pin maritime",
@@ -76,7 +80,7 @@ bd_foret_classee = classify_geodataframe(
 # Si le traitement est réussi, on découpe puis on enregistre.
 if bd_foret_classee is not None:
     # Appel de la fonction pour découper la bd foret classée par rapport à l'emprise
-    result = clip_geodata(bd_foret_classee, emprise_filename, bd_foret_classee_decoupe_filename)
+    result = filter_and_clip_geodata(bd_foret_classee, emprise_filename, bd_foret_classee_decoupe_filename)
     if result is not None:
         print("Traitement terminé avec succès.")
     else:

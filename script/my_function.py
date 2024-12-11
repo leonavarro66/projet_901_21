@@ -116,9 +116,9 @@ def classify_geodataframe(
         if mapping_column not in gdf.columns:
             raise ValueError(f"La colonne '{mapping_column}' n'existe pas dans le GeoDataFrame.")
 
-        # Ajouter les colonnes de mapping
-        gdf[code_column] = gdf[mapping_column].map(code_mapping)
-        gdf[name_column] = gdf[mapping_column].map(name_mapping)
+        # Ajouter les colonnes de mapping en utilisant .loc pour éviter l'erreur
+        gdf.loc[:, code_column] = gdf[mapping_column].map(code_mapping)
+        gdf.loc[:, name_column] = gdf[mapping_column].map(name_mapping)
 
         # Supprimer les lignes sans code associé (valeurs NaN dans la colonne de code)
         gdf = gdf.dropna(subset=[code_column])
@@ -137,13 +137,14 @@ def classify_geodataframe(
         return None
 
 
-def clip_geodata(
+def filter_and_clip_geodata(
     to_clip_gdf,
     emprise_gdf_path,
     output_path
 ):
     """
-    Découpe un GeoDataFrame en utilisant un autre GeoDataFrame comme emprise.
+    Filtre les polygones pour qu'ils soient entièrement inclus dans l'emprise 
+    et réalise une découpe.
 
     Paramètres :
     - to_clip_gdf_path (GeoDataFrame) : GeoDataFrame du shapefile à découper.
@@ -161,13 +162,13 @@ def clip_geodata(
         if to_clip_gdf.crs != emprise_gdf.crs:
             print("Les CRS diffèrent. Reprojection de l'emprise pour correspondre...")
             emprise_gdf = emprise_gdf.to_crs(to_clip_gdf.crs)
-
+        
         # Découpe du GeoDataFrame
         clipped_gdf = gpd.clip(to_clip_gdf, emprise_gdf)
 
-        # Sauvegarde du fichier découpé
+        # Sauvegarde du fichier filtré
         clipped_gdf.to_file(output_path)
-        print(f"Découpe réalisée avec succès ! Résultat sauvegardé dans : {output_path}")
+        print(f"Filtrage et découpe réalisés avec succès ! Résultat sauvegardé dans : {output_path}")
 
         return clipped_gdf
 
