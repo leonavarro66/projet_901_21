@@ -22,8 +22,6 @@ emprise_filename = os.path.join(my_data_folder, 'project', 'emprise_etude.shp')
 bd_foret = gpd.read_file(vector_filename)
 emprise = gpd.read_file(emprise_filename)
 
-print(emprise)
-
 # Création d'un tableau où l'on retrouve les codes des types à exclure
 types_a_exclure = ['LA4', 'LA6', 'FO0', 'FO1', 'FO2', 'FO3', 'FF0']
 
