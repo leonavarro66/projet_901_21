@@ -9,12 +9,14 @@ import os
 import geopandas as gpd
 sys.path.append('/home/onyxia/work/libsigma')
 sys.path.append('/home/onyxia/work/projet_901_21/script')
-from my_function import classify_geodataframe
+from my_function import classify_geodataframe, clip_geodata
 
 # Fichier de données nécessaire pour le masque
 my_data_folder = '/home/onyxia/work/data'
 my_result_folder_out = '/home/onyxia/work/projet_901_21/results/data'
 vector_filename = os.path.join(my_data_folder, 'project', 'FORMATION_VEGETALE.shp')
+emprise_filename = os.path.join(my_data_folder, 'project', 'emprise_etude.shp')
+bd_foret_classee_decoupe_filename = os.path.join(my_result_folder_out, 'sample', 'Sample_BD_foret_T31TCJ.shp')
 
 # Lecture du jeu de données de la bd_foret et de l'emprise d'etude
 bd_foret = gpd.read_file(vector_filename)
@@ -71,11 +73,13 @@ bd_foret_classee = classify_geodataframe(
     bd_foret, mapping_column="TFV", code_mapping=code_mapping, name_mapping=name_mapping
 )
 
-# Sauvegarde du résultat si le traitement est réussi
+# Si le traitement est réussi, on découpe puis on enregistre.
 if bd_foret_classee is not None:
-    bd_foret_classee_filename = os.path.join(my_result_folder_out, 'sample', 'Sample_BD_foret_T31TCJ.shp')
-    bd_foret_classee.to_file(bd_foret_classee_filename)
-    print("Traitement terminé avec succès !")
+    # Appel de la fonction pour découper la bd foret classée par rapport à l'emprise
+    result = clip_geodata(bd_foret_classee, emprise_filename, bd_foret_classee_decoupe_filename)
+    if result is not None:
+        print("Traitement terminé avec succès.")
+    else:
+        print("Le traitement a échoué.")
 else:
     print("Le traitement a échoué.")
-# Sauvegarde du shape modifié pour ensuite rasteriser

@@ -135,3 +135,42 @@ def classify_geodataframe(
     except Exception as e:
         print(f"Une erreur inattendue s'est produite : {e}")
         return None
+
+
+def clip_geodata(
+    to_clip_gdf,
+    emprise_gdf_path,
+    output_path
+):
+    """
+    Découpe un GeoDataFrame en utilisant un autre GeoDataFrame comme emprise.
+
+    Paramètres :
+    - to_clip_gdf_path (GeoDataFrame) : GeoDataFrame du shapefile à découper.
+    - emprise_gdf_path (str) : Chemin du fichier shapefile d'emprise.
+    - output_path (str) : Chemin du fichier de sortie.
+
+    Retour :
+    - GeoDataFrame : Le GeoDataFrame découpé.
+    """
+    try:
+        # Charger les fichiers
+        emprise_gdf = gpd.read_file(emprise_gdf_path)
+
+        # Vérifier les CRS
+        if to_clip_gdf.crs != emprise_gdf.crs:
+            print("Les CRS diffèrent. Reprojection de l'emprise pour correspondre...")
+            emprise_gdf = emprise_gdf.to_crs(to_clip_gdf.crs)
+
+        # Découpe du GeoDataFrame
+        clipped_gdf = gpd.clip(to_clip_gdf, emprise_gdf)
+
+        # Sauvegarde du fichier découpé
+        clipped_gdf.to_file(output_path)
+        print(f"Découpe réalisée avec succès ! Résultat sauvegardé dans : {output_path}")
+
+        return clipped_gdf
+
+    except Exception as e:
+        print(f"Une erreur est survenue : {e}")
+        return None
