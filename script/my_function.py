@@ -227,3 +227,136 @@ def stack_bands(bands_files, output_path):
     # Fermer le fichier de sortie
     out_ds = None
     print(f"Image multi-bandes créée : {output_path}")
+
+
+
+from osgeo import gdal
+import numpy as np
+import logging
+import os
+import geopandas as gpd
+
+gdal.UseExceptions()
+
+def rasteriser_avec_gdal(in_vector, out_image, resolution_spatiale, nom_champ, type_donnee="UInt16"):
+    """
+    Rasterise un fichier vecteur en un fichier raster en utilisant GDAL.
+
+    Paramètres :
+    - in_vector (str) : Chemin vers le fichier vecteur d'entrée (shapefile).
+    - out_image (str) : Chemin vers le fichier raster de sortie.
+    - resolution_spatiale (float) : Résolution spatiale pour le raster.
+    - nom_champ (str) : Nom du champ d'attribut à graver dans le raster.
+    - type_donnee (str) : Type de données GDAL pour le raster (par défaut : UInt16).
+
+    Retourne :
+    - None
+    """
+    try:
+        # Ouvrir le fichier vecteur
+        vector_ds = gdal.OpenEx(in_vector, gdal.OF_VECTOR)
+        if vector_ds is None:
+            raise RuntimeError(f"Impossible d'ouvrir le fichier vecteur : {in_vector}")
+
+        # Obtenir la couche à partir du dataset vecteur
+        couche = vector_ds.GetLayer()
+
+        # Obtenir l'étendue de la couche vecteur
+        extent = couche.GetExtent()
+        xmin, xmax, ymin, ymax = extent
+
+        # Calculer les dimensions du raster
+        cols = int((xmax - xmin) / resolution_spatiale)
+        rows = int((ymax - ymin) / resolution_spatiale)
+
+        # Créer le dataset raster
+        driver = gdal.GetDriverByName("GTiff")
+        raster_ds = driver.Create(
+            out_image,
+            cols,
+            rows,
+            1,
+            gdal.GetDataTypeByName(type_donnee)
+        )
+
+        if raster_ds is None:
+            raise RuntimeError(f"Impossible de créer le fichier raster : {out_image}")
+
+        # Définir la géotransformation et la projection
+        geotransform = (xmin, resolution_spatiale, 0, ymax, 0, -resolution_spatiale)
+        raster_ds.SetGeoTransform(geotransform)
+        raster_ds.SetProjection(couche.GetSpatialRef().ExportToWkt())
+
+        # Rasteriser la couche vecteur
+        gdal.RasterizeLayer(
+            raster_ds,
+            [1],
+            couche,
+            options=[f"ATTRIBUTE={nom_champ}"]
+        )
+
+        # Fermer les datasets
+        raster_ds = None
+        vector_ds = None
+
+        logging.info(f"Rasterisation terminée. Résultat enregistré dans {out_image}")
+
+    except Exception as e:
+        logging.error(f"Erreur lors de la rasterisation : {e}")
+        raise
+
+def count_pixels_by_class(gdf, colonne_classe, classes_selectionnees):
+    """
+    Compte le nombre de pixels par classe en rasterisant les polygones.
+
+    Paramètres :
+    - gdf (GeoDataFrame) : GeoDataFrame contenant les polygones.
+    - colonne_classe (str) : Nom de la colonne contenant les valeurs des classes.
+    - classes_selectionnees (list) : Liste des classes à analyser.
+
+    Retourne :
+    - dict : Un dictionnaire avec les classes comme clés et le nombre de pixels comme valeurs.
+    """
+    # Créer des chemins temporaires pour les fichiers vecteur et raster
+    vecteur_temp = "/tmp/temp_vector.shp"
+    raster_temp = "/tmp/temp_raster.tif"
+    resolution_spatiale = 10  # Définir la résolution spatiale
+
+    try:
+        # Enregistrer le GeoDataFrame en tant que shapefile temporaire
+        gdf.to_file(vecteur_temp)
+
+        # Rasteriser le shapefile
+        rasteriser_avec_gdal(
+            in_vector=vecteur_temp,
+            out_image=raster_temp,
+            resolution_spatiale=resolution_spatiale,
+            nom_champ=colonne_classe
+        )
+
+        # Ouvrir le raster et compter les pixels
+        raster_ds = gdal.Open(raster_temp)
+        raster_array = raster_ds.GetRasterBand(1).ReadAsArray()
+
+        # Compter les pixels pour chaque classe
+        compteur_pixels = {}
+        for classe in classes_selectionnees:
+            compteur_pixels[classe] = np.sum(raster_array == classe)
+
+        # Supprimer les fichiers temporaires
+        os.remove(vecteur_temp)
+        os.remove(raster_temp)
+
+        return compteur_pixels
+
+    except Exception as e:
+        logging.error(f"Erreur lors du comptage des pixels : {e}")
+        return {}
+
+    finally:
+        # S'assurer que les fichiers temporaires sont supprimés
+        if os.path.exists(vecteur_temp):
+            os.remove(vecteur_temp)
+        if os.path.exists(raster_temp):
+            os.remove(raster_temp)
+
