@@ -1,15 +1,17 @@
 import os
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from my_function import count_polygons_by_class, count_pixels_by_class
+from my_function import count_polygons_by_class, count_pixels_by_class, prepare_violin_plot_data
 import matplotlib.cm as cm
 from matplotlib.colors import LogNorm
+import numpy as np
 
-# Définir les chemins des fichiers
+# Définition des chemins des fichiers
 input_file = "/home/onyxia/work/projet_901_21/results/data/sample/Sample_BD_foret_T31TCJ.shp"
 output_dir = "/home/onyxia/work/projet_901_21/results/figure"
 diag_poly_file = os.path.join(output_dir, "diag_baton_nb_poly_by_class.png")
 diag_pix_file = os.path.join(output_dir, "diag_baton_nb_pix_by_class.png")
+violin_plot_file = os.path.join(output_dir, "violin_plot_nb_pix_by_poly_by_class.png")
 
 # Charger les données du fichier Shapefile
 gdf = gpd.read_file(input_file)
@@ -17,31 +19,31 @@ gdf = gpd.read_file(input_file)
 # Liste des classes à analyser
 selected_classes = [11, 12, 13, 14, 21, 22, 23, 24, 25]
 
-# Comptage des polygones par classe
+# Comptage du nombre de polygones par classe
 class_counts = count_polygons_by_class(gdf, "Code", selected_classes)
 
-# Associer les noms aux codes
+# Associer les codes des classes à leurs noms
 filtered_gdf = gdf[gdf["Code"].isin(selected_classes)][["Code", "Nom"]].drop_duplicates()
 code_to_name = dict(zip(filtered_gdf["Code"], filtered_gdf["Nom"]))
 
-# Convertir les codes en noms pour le plot (polygones)
+# Conversion des codes en noms pour le diagramme en bâtons (polygones)
 class_names = [code_to_name[code] for code in class_counts.keys()]
 counts = list(class_counts.values())
 
 # Générer une palette de couleurs avec une échelle logarithmique
-norm = LogNorm(vmin=min(counts), vmax=max(counts))  # Normalisation logarithmique
-colors = cm.Greens(norm(counts))  # Génère une palette de verts
+norm = LogNorm(vmin=min(counts), vmax=max(counts))
+colors = cm.Greens(norm(counts))
 
-# Créer le diagramme en bâtons pour les polygones
+# Création du diagramme en bâtons pour les polygones
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
-plt.figure(figsize=(10, 6))
-bars = plt.bar(class_names, counts, color=colors, edgecolor='black')  # Ajout de la bordure noire
-plt.xlabel("Classes", fontsize=14)
-plt.ylabel("Nombre de polygones", fontsize=14)
-plt.title("Nombre de polygones par classe", fontsize=16)
-plt.xticks(rotation=45, ha="right")  # Rotation des noms pour une meilleure lisibilité
+plt.figure(figsize=(12, 8))
+bars = plt.bar(class_names, counts, color=colors, edgecolor='black')
+plt.xlabel("Classes", fontsize=16)
+plt.ylabel("Nombre de polygones", fontsize=16)
+plt.title("Nombre de polygones par classe", fontsize=18)
+plt.xticks(rotation=45, ha="right", fontsize=12)
 plt.tight_layout()
 
 # Ajouter des étiquettes sur chaque barre
@@ -57,24 +59,24 @@ plt.close()
 
 print(f"diag_baton_nb_poly_by_class sauvegardé dans {diag_poly_file}")
 
-# Comptage des pixels par classe
+# Comptage du nombre de pixels par classe
 class_pixel_counts = count_pixels_by_class(gdf, "Code", selected_classes)
 
-# Convertir les codes en noms pour le plot (pixels)
+# Conversion des codes en noms pour le diagramme en bâtons (pixels)
 class_names_pix = [code_to_name[code] for code in class_pixel_counts.keys()]
 counts_pix = list(class_pixel_counts.values())
 
-# Créer le diagramme en bâtons pour les pixels
-plt.figure(figsize=(10, 6))
+# Création du diagramme en bâtons pour les pixels
+plt.figure(figsize=(12, 8))
 # Générer une palette de couleurs avec une échelle logarithmique
-norm = LogNorm(vmin=min(counts_pix), vmax=max(counts_pix))  # Normalisation logarithmique
-colors = cm.Blues(norm(counts_pix))  # Génère une palette de bleus
+norm = LogNorm(vmin=min(counts_pix), vmax=max(counts_pix))
+colors = cm.Blues(norm(counts_pix))
 
-bars = plt.bar(class_names_pix, counts_pix, color=colors, edgecolor='black')  # Ajout de la bordure noire
-plt.xlabel("Classes", fontsize=14)
-plt.ylabel("Nombre de pixels", fontsize=14)
-plt.title("Nombre de pixels par classe", fontsize=16)
-plt.xticks(rotation=45, ha="right")  # Rotation des noms pour une meilleure lisibilité
+bars = plt.bar(class_names_pix, counts_pix, color=colors, edgecolor='black')
+plt.xlabel("Classes", fontsize=16)
+plt.ylabel("Nombre de pixels", fontsize=16)
+plt.title("Nombre de pixels par classe", fontsize=18)
+plt.xticks(rotation=45, ha="right", fontsize=12)
 plt.tight_layout()
 
 # Ajouter des étiquettes sur chaque barre
@@ -89,3 +91,45 @@ plt.savefig(diag_pix_file)
 plt.close()
 
 print(f"diag_baton_nb_pix_by_class sauvegardé dans {diag_pix_file}")
+
+# Calculer la surface de chaque polygone en pixels (adapté à la résolution du raster)
+resolution = 10  # Résolution spatiale utilisée pour le raster
+gdf["Nombre_de_pixels"] = (gdf.geometry.area / (resolution**2)).astype(int)
+
+# Préparer les données pour le "violin plot"
+violin_data = prepare_violin_plot_data(gdf, "Code", "Nombre_de_pixels")
+
+# Filtrer les données pour les classes sélectionnées
+violin_data = violin_data[violin_data["Classe"].isin(selected_classes)]
+
+# Mapper les noms des classes pour les classes sélectionnées
+classes = [code_to_name[classe] for classe in selected_classes]
+
+# Préparer les données pour Matplotlib
+data = [violin_data[violin_data["Classe"] == classe]["Pixels"].values for classe in selected_classes]
+
+# Création du "violin plot" avec Matplotlib
+plt.figure(figsize=(12, 8))
+violin_parts = plt.violinplot(data, showmeans=False, showextrema=True, showmedians=True)
+
+# Personnaliser les couleurs des violons
+for pc in violin_parts['bodies']:
+    pc.set_facecolor('skyblue')
+    pc.set_edgecolor('black')
+    pc.set_alpha(0.7)
+
+# Ajouter des étiquettes et configurer l'échelle des axes
+plt.xticks(ticks=np.arange(1, len(classes) + 1), labels=classes, rotation=45, ha="right", fontsize=12)
+plt.xlabel("Classes", fontsize=16)
+plt.ylabel("Nombre de pixels par polygone", fontsize=16)
+plt.title("Distribution du nombre de pixels par polygone, par classe", fontsize=18)
+plt.yscale('log')  # Utiliser une échelle logarithmique pour l'axe Y
+plt.yticks([1, 10, 100, 1000, 10000, 100000], ["0", "10", "100", "1k", "10k", "100k"])
+plt.gca().yaxis.set_minor_formatter(plt.FuncFormatter(lambda x, _: ""))  # Supprimer les ticks mineurs
+plt.tight_layout()
+
+# Sauvegarder la figure
+plt.savefig(violin_plot_file)
+plt.close()
+
+print(f"violin_plot_nb_pix_by_poly_by_class sauvegardé dans {violin_plot_file}")

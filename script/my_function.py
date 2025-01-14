@@ -360,3 +360,28 @@ def count_pixels_by_class(gdf, colonne_classe, classes_selectionnees):
         if os.path.exists(raster_temp):
             os.remove(raster_temp)
 
+import pandas as pd
+import geopandas as gpd
+
+def prepare_violin_plot_data(gdf, class_column, pixel_column):
+    """
+    Prépare les données pour un "violin plot" montrant la distribution du nombre de pixels par polygone, par classe.
+
+    :param gdf: GeoDataFrame contenant les données des polygones.
+    :param class_column: Nom de la colonne contenant les classes.
+    :param pixel_column: Nom de la colonne contenant le nombre de pixels.
+    :return: DataFrame avec les colonnes "Classe" et "Pixels".
+    """
+    # Vérifier que les colonnes nécessaires existent
+    if class_column not in gdf.columns or pixel_column not in gdf.columns:
+        raise ValueError(f"Les colonnes {class_column} et {pixel_column} doivent exister dans le GeoDataFrame.")
+
+    # Filtrer les lignes ayant des valeurs non nulles dans les colonnes spécifiées
+    filtered_gdf = gdf.dropna(subset=[class_column, pixel_column])
+
+    # Construire un DataFrame avec les classes et les pixels
+    violin_data = filtered_gdf[[class_column, pixel_column]].rename(
+        columns={class_column: "Classe", pixel_column: "Pixels"}
+    )
+
+    return violin_data
