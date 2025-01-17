@@ -16,7 +16,9 @@ def rasterize(
     spatial_res,
     data_type,
     driver,
-    field_name
+    field_name,
+    proj="EPSG:2154",
+    no_data=0
 ):
     """
     Fonction permettant de rasteriser un shapefile en fonction d'une couche de référence.
@@ -29,7 +31,9 @@ def rasterize(
     - data_type (str): Type de données pour le raster (par exemple, 'Byte', 'UInt16', etc.).
     - driver (str): Driver de format à utiliser pour la sortie (par exemple, 'GTiff' pour GeoTIFF).
     - field_name (str): Nom du champ à utiliser pour la rasterisation.
-
+    - proj (str): Projection par défaut EPSG:2154
+    - no_data (int): Valeur de no data
+    
     Exceptions :
         ValueError: Si un paramètre est invalide ou si la commande échoue.
     """
@@ -52,8 +56,9 @@ def rasterize(
     # Définir la commande à exécuter avec les paramètres appropriés
     cmd_pattern = (
         "gdal_rasterize -a {field_name} "
-        "-tr {spatial_res} {spatial_res} "
+        "-tr {spatial_res} {spatial_res} -a_nodata {no_data} "
         "-te {xmin} {ymin} {xmax} {ymax} -ot {data_type} -of {driver} "
+        "-a_srs {proj} -tap "
         "{in_vector} {out_image}"
     )
 
@@ -61,7 +66,7 @@ def rasterize(
     cmd = cmd_pattern.format(
         in_vector=in_vector, xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax,
         spatial_res=spatial_res, out_image=out_image, field_name=field_name,
-        data_type=data_type, driver=driver
+        data_type=data_type, driver=driver, proj=proj, no_data=no_data
     )
 
     # Affichage de la commande pour vérification
