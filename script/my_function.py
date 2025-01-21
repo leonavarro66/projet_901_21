@@ -390,3 +390,196 @@ def prepare_violin_plot_data(gdf, class_column, pixel_column):
     )
 
     return violin_data
+
+from osgeo import gdal
+
+def clip_raster(
+    in_raster,
+    ref_image,
+    ref_image_gdf,
+    out_image,
+    spatial_res,
+    data_type,
+    driver,
+    proj="EPSG:2154",
+    no_data=0
+):
+    """
+    Fonction permettant de découper un raster en fonction d'une couche de référence.
+
+    Paramètres :
+    - in_raster (str): Chemin vers le raster à découper.
+    - ref_image (str): Chemin vers le shape de l'emprise.
+    - ref_image_gdf (GeoDataFrame): GeoDataFrame représentant l'image de référence (utilisé pour l'emprise).
+    - out_image (str): Chemin où l'image découpée sera sauvegardée.
+    - spatial_res (float): Résolution spatiale à utiliser pour le raster.
+    - data_type (str): Type de données pour le raster (par exemple, 'Byte', 'UInt16', etc.).
+    - driver (str): Driver de format à utiliser pour la sortie (par exemple, 'GTiff' pour GeoTIFF).
+    - proj (str): Projection par défaut EPSG:2154
+    - no_data (int): Valeur de no data
+    
+    Exceptions :
+        ValueError: Si un paramètre est invalide ou si la commande échoue.
+    """
+    # Vérification des paramètres
+    if not os.path.exists(in_raster):
+        raise ValueError(f"Le fichier d'entrée '{in_raster}' n'existe pas.")
+    if not os.path.exists(ref_image):
+        raise ValueError(f"Le fichier d'entrée '{ref_image}' n'existe pas.")
+    if not isinstance(ref_image_gdf, gpd.GeoDataFrame):
+        raise ValueError("Le paramètre 'ref_image_gdf' doit être un GeoDataFrame.")
+    if not isinstance(spatial_res, (int, float)) or spatial_res <= 0:
+        raise ValueError("La résolution spatiale doit être un nombre positif.")
+
+    # Extraction des coordonnées de l'emprise de l'image de référence
+    try:
+        xmin, ymin, xmax, ymax = ref_image_gdf.total_bounds
+    except Exception as e:
+        raise ValueError(f"Erreur lors de l'extraction des limites de l'emprise : {e}")
+    
+    # Définir la commande à exécuter avec les paramètres appropriés
+    cmd_pattern = (
+        "gdalwarp -cutline {ref_image} "
+        "-crop_to_cutline "
+        "-tr {spatial_res} {spatial_res} -dstnodata {no_data} "
+        "-te {xmin} {ymin} {xmax} {ymax} -ot {data_type} -of {driver} "
+        "-t_srs {proj} -tap "
+        "{in_raster} {out_image}"
+    )
+
+    # Remplir la commande avec les paramètres
+    cmd = cmd_pattern.format(
+        in_raster=in_raster, xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax,
+        spatial_res=spatial_res, out_image=out_image,
+        data_type=data_type, driver=driver, proj=proj, no_data=no_data, ref_image=ref_image
+    )
+
+    # Affichage de la commande pour vérification
+    logging.info(f"Commande de découpage raster : {cmd}")
+
+    # Exécution de la commande
+    try:
+        result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        logging.info(result.stdout.decode())  # Afficher la sortie standard
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.decode() if e.stderr else "Erreur inconnue."
+        raise ValueError(f"Erreur lors de l'exécution de la commande gdalwarp : {error_msg}")
+
+    # Confirmer que l'image a été créée
+    if not os.path.exists(out_image):
+        raise ValueError(f"L'image de sortie '{out_image}' n'a pas été créée.")
+    
+    logging.info(f"Découpage terminée, fichier sauvegardé à : {out_image}")
+
+def apply_mask(
+    in_raster,
+    masque_image,
+    out_image,
+    data_type,
+    driver,
+    expression,
+    no_data=0
+):
+    """
+    Fonction permettant d'appliquer un masque sur un raster.
+
+    Paramètres :
+    - in_raster (str): Chemin vers le raster où appliquer le masque.
+    - masque_image (str): Chemin vers le masque.
+    - out_image (str): Chemin où l'image avec le masque sera sauvegardée.
+    - data_type (str): Type de données pour le raster (par exemple, 'Byte', 'UInt16', etc.).
+    - driver (str): Driver de format à utiliser pour la sortie (par exemple, 'GTiff' pour GeoTIFF).
+    - expression (str): Expression à effectuer pour le masque
+    - no_data (int): Valeur de no data
+    
+    Exceptions :
+        ValueError: Si un paramètre est invalide ou si la commande échoue.
+    """
+    # Vérification des paramètres
+    if not os.path.exists(in_raster):
+        raise ValueError(f"Le fichier d'entrée '{in_raster}' n'existe pas.")
+    # Vérification des paramètres
+    if not os.path.exists(masque_image):
+        raise ValueError(f"Le fichier d'entrée '{masque_image}' n'existe pas.")
+    
+    # Définir la commande à exécuter avec les paramètres appropriés
+    cmd_pattern = (
+        "gdal_calc "
+        "--calc '{exp}' "
+        "--format {driver} --type {data_type} "
+        "--NoDataValue {no_data} "
+        "-A {in_raster} "
+        "-B {masque} "
+        "--outfile {out_image}"
+    )
+
+    # Remplir la commande avec les paramètres
+    cmd = cmd_pattern.format(
+        in_raster=in_raster, masque=masque_image, exp=expression,
+        out_image=out_image,
+        data_type=data_type, driver=driver, no_data=no_data
+    )
+
+    # Affichage de la commande pour vérification
+    logging.info(f"Commande de calcul raster : {cmd}")
+
+    # Exécution de la commande
+    try:
+        result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        logging.info(result.stdout.decode())  # Afficher la sortie standard
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.decode() if e.stderr else "Erreur inconnue."
+        raise ValueError(f"Erreur lors de l'exécution de la commande gdal_calc : {error_msg}")
+
+    # Confirmer que l'image a été créée
+    if not os.path.exists(out_image):
+        raise ValueError(f"L'image de sortie '{out_image}' n'a pas été créée.")
+    
+    logging.info(f"Calcul terminée, fichier sauvegardé à : {out_image}")
+
+def concat_bands(input_files, output_file, data_type, no_data, separate=True, output_format="GTiff"):
+    """
+    Fusionne plusieurs rasters mono-bande en un seul fichier raster.
+
+    Args:
+        input_files (list): Liste des fichiers raster à fusionner.
+        output_file (str): Chemin du fichier de sortie.
+        data_type (str): Type de données.
+        no_data (int): Valeur des nodatas
+        separate (bool): Si True, chaque raster sera placé dans une bande distincte.
+        output_format (str): Format du fichier de sortie (par défaut "GTiff").
+        
+    """
+    # Définir la commande avec les paramètres appropriés
+    cmd_pattern = (
+        "gdal_merge.py "
+        "-o {output_raster} "
+        "-n {no_data} -a_nodata {no_data} -ot {data_type} "
+        "-of {driver} "
+        "{separate_flag} "
+        "{input_files}"
+    )
+
+    # Construire la commande avec les paramètres
+    separate_flag = "-separate" if separate else ""
+    input_files = " ".join(input_files)
+    cmd = cmd_pattern.format(
+        output_raster=output_file,
+        driver=output_format,
+        no_data=no_data,
+        data_type=data_type,
+        separate_flag=separate_flag,
+        input_files=input_files
+    )
+
+    # Affichage de la commande pour vérification
+    logging.info(f"Commande de fusion des rasters : {cmd}")
+
+    # Exécution de la commande
+    try:
+        result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        logging.info(result.stdout.decode())  # Afficher la sortie standard
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.decode() if e.stderr else "Erreur inconnue."
+        raise ValueError(f"Erreur lors de l'exécution de la commande gdal_merge.py : {error_msg}")
+
