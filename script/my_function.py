@@ -199,43 +199,6 @@ def count_polygons_by_class(gdf, class_column, selected_classes):
 
     return class_counts
 
-def stack_bands(bands_files, output_path):
-    """
-    Concatène plusieurs fichiers .tif (bandes) en une seule image multi-bandes.
-
-    :param bands_files: Liste des chemins vers les fichiers .tif des bandes.
-    :param output_path: Chemin du fichier de sortie (fichier .tif multi-bandes).
-    """
-    # Chargement de la première bande pour obtenir les paramètres de géoréférencement
-    ref_ds = gdal.Open(bands_files[0])
-    driver = gdal.GetDriverByName("GTiff")
-    
-    # Création d'une image de sortie avec autant de bandes que le nombre d'entrées
-    out_ds = driver.Create(
-        output_path,
-        ref_ds.RasterXSize,
-        ref_ds.RasterYSize,
-        len(bands_files),
-        ref_ds.GetRasterBand(1).DataType,
-    )
-    
-    # Copie des métadonnées de géoréférencement
-    out_ds.SetGeoTransform(ref_ds.GetGeoTransform())
-    out_ds.SetProjection(ref_ds.GetProjection())
-    
-    # Ajout de chaque bande au fichier de sortie
-    for i, band_path in enumerate(bands_files):
-        band_ds = gdal.Open(band_path)
-        band_data = band_ds.GetRasterBand(1).ReadAsArray()
-        out_ds.GetRasterBand(i + 1).WriteArray(band_data)
-        band_ds = None  # Fermer le fichier après utilisation
-    
-    # Fermer le fichier de sortie
-    out_ds = None
-    print(f"Image multi-bandes créée : {output_path}")
-
-
-
 from osgeo import gdal
 import numpy as np
 import logging
