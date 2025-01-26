@@ -4,6 +4,7 @@
 """
 
 import os
+import re
 import geopandas as gpd
 import subprocess
 import logging
@@ -583,3 +584,84 @@ def concat_bands(input_files, output_file, data_type, no_data, separate=True, ou
         error_msg = e.stderr.decode() if e.stderr else "Erreur inconnue."
         raise ValueError(f"Erreur lors de l'exécution de la commande gdal_merge.py : {error_msg}")
 
+def calculate_ndvi(input_folder, output_folder, expression, data_type="Float32", driver="GTiff", no_data=-9999):
+    """
+    Calcule le NDVI pour chaque date à partir des fichiers raster dans le dossier d'entrée,
+    et sauvegarde les résultats dans un fichier raster multibandes.
+
+    Args
+
+    - input_folder (str): Dossier contenant les fichiers raster (B4 et B8)
+    - output_folder (str): Dossier où les fichiers NDVI seront sauvegardés
+    - expression (str): Expression à calculer
+    - data_type (str): Type de données pour le raster (par exemple, 'Byte', 'UInt16', etc.).
+    - driver (str): Driver de format à utiliser pour la sortie (par exemple, 'GTiff' pour GeoTIFF).
+    - no_data (int): Valeur de no data
+    """
+    # Assurez-vous que le dossier temporaire existe
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Expression régulière pour extraire la date et la bande
+    date_regex = r"(\d{8}-\d{6}-\d{3})"
+    band_regex = r"_(B\d{1,2})_"
+
+    # Liste des fichiers triés
+    raster_files = sorted(
+        [os.path.join(input_folder, f) for f in os.listdir(input_folder) if f.endswith('.tif')],
+        key=lambda x: (re.search(date_regex, os.path.basename(x)).group(1), x)
+    )
+
+    # Grouper les fichiers par date
+    dates = {}
+    for raster in raster_files:
+        filename = os.path.basename(raster)
+        date_match = re.search(date_regex, filename)
+        band_match = re.search(band_regex, filename)
+        if date_match and band_match:
+            date = date_match.group(1)
+            band = band_match.group(1)
+            if date not in dates:
+                dates[date] = {}
+            dates[date][band] = raster
+
+    # Calcul du NDVI pour chaque date
+    for date, bands in dates.items():
+        if "B4" in bands and "B8" in bands:
+            b4_path = bands["B4"]
+            b8_path = bands["B8"]
+
+            # Chemin de sortie pour le NDVI
+            output_path = os.path.join(output_folder, f"NDVI_{date}.tif")
+
+            # Définir la commande
+            cmd_pattern = (
+                "gdal_calc.py "
+                "--calc '{exp}' "
+                "--format {driver} --type {data_type} "
+                "--NoDataValue {no_data} "
+                "-A {in_raster} "
+                "-B {masque} "
+                "--outfile {out_image}"
+            )
+
+            # Remplir la commande avec les paramètres
+            cmd = cmd_pattern.format(
+                in_raster=b8_path,
+                masque=b4_path,
+                exp=expression,
+                out_image=output_path,
+                data_type=data_type,
+                driver=driver,
+                no_data=no_data
+            )
+
+            # Exécution de la commande
+            logging.info(f"Commande de calcul raster : {cmd}")
+            try:
+                result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                logging.info(result.stdout.decode())  # Afficher la sortie standard
+            except subprocess.CalledProcessError as e:
+                error_msg = e.stderr.decode() if e.stderr else "Erreur inconnue."
+                raise ValueError(f"Erreur lors de l'exécution de la commande gdal_calc : {error_msg}")
+        else:
+            logging.warning(f"Bandes nécessaires (B4, B8) manquantes pour la date {date}")
