@@ -743,3 +743,18 @@ def analyze_phenology_gdal_alternative(ndvi_raster, shapefile, output_folder, da
     plt.close()
 
     logging.info(f"Graphique sauvegardé : {output_path}")
+
+
+# Fonction pour calculer la distance au centroïde
+def calculate_distance(centroid, pixel_x, pixel_y):
+    """Fonction qui permet de calculer la distance au centroide
+
+    Args:
+        centroid (int): Coordonnées du centroide
+        pixel_x (int): Coordonnées du pixel en X 
+        pixel_y (int): Coordonnées du pixel en Y
+
+    Returns:
+        int: La distance au centroide
+    """
+    return np.sqrt((centroid[0] - pixel_x) ** 2 + (centroid[1] - pixel_y) ** 2)
