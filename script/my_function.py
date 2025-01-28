@@ -6,9 +6,13 @@
 import os
 import re
 import geopandas as gpd
+import pandas as pd
+import matplotlib.pyplot as plt
 import subprocess
 import logging
+import numpy as np
 from osgeo import gdal
+
 
 def rasterize(
     in_vector,
@@ -182,6 +186,7 @@ def filter_and_clip_geodata(
         print(f"Une erreur est survenue : {e}")
         return None
 
+
 def count_polygons_by_class(gdf, class_column, selected_classes):
     """
     Compte le nombre de polygones par classe pour les classes sélectionnées.
@@ -199,13 +204,6 @@ def count_polygons_by_class(gdf, class_column, selected_classes):
 
     return class_counts
 
-from osgeo import gdal
-import numpy as np
-import logging
-import os
-import geopandas as gpd
-
-gdal.UseExceptions()
 
 def rasteriser_avec_gdal(in_vector, out_image, resolution_spatiale, nom_champ, type_donnee="UInt16"):
     """
@@ -274,6 +272,7 @@ def rasteriser_avec_gdal(in_vector, out_image, resolution_spatiale, nom_champ, t
         logging.error(f"Erreur lors de la rasterisation : {e}")
         raise
 
+
 def count_pixels_by_class(gdf, colonne_classe, classes_selectionnees):
     """
     Compte le nombre de pixels par classe en rasterisant les polygones.
@@ -329,8 +328,6 @@ def count_pixels_by_class(gdf, colonne_classe, classes_selectionnees):
         if os.path.exists(raster_temp):
             os.remove(raster_temp)
 
-import pandas as pd
-import geopandas as gpd
 
 def prepare_violin_plot_data(gdf, class_column, pixel_column):
     """
@@ -432,8 +429,9 @@ def clip_raster(
     # Confirmer que l'image a été créée
     if not os.path.exists(out_image):
         raise ValueError(f"L'image de sortie '{out_image}' n'a pas été créée.")
-    
+
     logging.info(f"Découpage terminée, fichier sauvegardé à : {out_image}")
+
 
 def apply_mask(
     in_raster,
@@ -501,6 +499,7 @@ def apply_mask(
     
     logging.info(f"Calcul terminée, fichier sauvegardé à : {out_image}")
 
+
 def concat_bands(input_files, output_file, data_type, no_data, separate=True, output_format="GTiff"):
     """
     Fusionne plusieurs rasters mono-bande en un seul fichier raster.
@@ -546,6 +545,7 @@ def concat_bands(input_files, output_file, data_type, no_data, separate=True, ou
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.decode() if e.stderr else "Erreur inconnue."
         raise ValueError(f"Erreur lors de l'exécution de la commande gdal_merge.py : {error_msg}")
+
 
 def calculate_ndvi(input_folder, output_folder, expression, data_type="Float32", driver="GTiff", no_data=-9999):
     """
@@ -628,3 +628,118 @@ def calculate_ndvi(input_folder, output_folder, expression, data_type="Float32",
                 raise ValueError(f"Erreur lors de l'exécution de la commande gdal_calc : {error_msg}")
         else:
             logging.warning(f"Bandes nécessaires (B4, B8) manquantes pour la date {date}")
+
+
+def analyze_phenology_gdal_alternative(ndvi_raster, shapefile, output_folder, dates):
+    """
+    Analyse la phénologie des classes de la BD forêt classifié et produit un graphique amélioré.
+
+    :param ndvi_raster: Chemin du raster multibandes NDVI
+    :param shapefile: Chemin du shapefile de la BD forêt classifié
+    :param output_folder: Dossier pour sauvegarder les résultats
+    :param dates: Liste des dates associées aux bandes du raster NDVI
+    """
+    # Classes pertinentes
+    selected_classes = [12, 13, 14, 23, 24, 25]
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Charger les noms des classes à partir du shapefile
+    gdf = gpd.read_file(shapefile)
+    class_names = {
+        row['Code']: row['Nom']
+        for _, row in gdf.iterrows() if row['Code'] in selected_classes
+    }
+
+    # Initialisation des résultats
+    stats = {cls: {"mean": [], "std": []} for cls in selected_classes}
+    bands_count = 6  # Supposons que le raster NDVI contient 6 bandes temporelles
+
+    for i in range(1, bands_count + 1):
+        logging.info(f"Traitement de la bande {i}...")
+        temp_band_raster = f"/home/onyxia/work/data/project/tmp/temp_band_{i}.tif"
+
+        # Extraire la bande NDVI i
+        cmd_extract_band = (
+            f"gdal_translate -b {i} {ndvi_raster} {temp_band_raster} "
+            f"-of GTiff -q"
+        )
+        subprocess.run(cmd_extract_band, shell=True, check=True)
+
+        for cls in selected_classes:
+            logging.info(f"Traitement de la classe {cls}...")
+
+            # Créer un masque pour la classe
+            temp_mask = f"/home/onyxia/work/data/project/tmp/temp_mask_{cls}.shp"
+            cmd_create_mask = (
+                f"ogr2ogr -where \"Code={cls}\" {temp_mask} {shapefile}"
+            )
+            subprocess.run(cmd_create_mask, shell=True, check=True)
+
+            # Découper le raster par la classe
+            temp_cropped_raster = f"/home/onyxia/work/data/project/tmp/temp_cropped_band_{i}_class_{cls}.tif"
+            cmd_crop_raster = (
+                f"gdalwarp -cutline {temp_mask} -crop_to_cutline -dstnodata -9999 "
+                f"{temp_band_raster} {temp_cropped_raster}"
+            )
+            subprocess.run(cmd_crop_raster, shell=True, check=True)
+
+            # Obtenir les statistiques avec gdalinfo
+            cmd_get_stats = f"gdalinfo -stats {temp_cropped_raster}"
+            result = subprocess.run(
+                cmd_get_stats, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+            stats_output = result.stdout.decode()
+
+            # Extraire les statistiques
+            mean_value, std_value = None, None
+            for line in stats_output.split("\n"):
+                if "STATISTICS_MEAN=" in line:
+                    mean_value = float(line.split("=")[-1])
+                if "STATISTICS_STDDEV=" in line:
+                    std_value = float(line.split("=")[-1])
+
+            # Sauvegarder les résultats
+            stats[cls]["mean"].append(mean_value)
+            stats[cls]["std"].append(std_value)
+
+            # Nettoyer les fichiers temporaires
+            os.remove(temp_mask)
+            os.remove(temp_cropped_raster)
+
+        # Supprimer le raster temporaire
+        os.remove(temp_band_raster)
+
+    # Création du graphique
+    logging.info("Création du graphique des signatures temporelles...")
+    plt.figure(figsize=(14, 8))
+    for cls in selected_classes:
+        mean_values = stats[cls]["mean"]
+        std_values = stats[cls]["std"]
+
+        # Tracer la moyenne
+        plt.plot(
+            dates, mean_values, label=f"Classe {cls} - {class_names.get(cls, 'Inconnu')} (Moyenne)", linewidth=2
+        )
+
+        # Tracer l'écart type (points et lignes discontinues)
+        plt.plot(
+            dates, std_values, label=f"Classe {cls} - {class_names.get(cls, 'Inconnu')} (Écart Type)",
+            linestyle="--", linewidth=1.5
+        )
+
+    # Personnalisation du graphique
+    plt.title("Signature temporelle du NDVI par classe", fontsize=16)
+    plt.xlabel("Dates", fontsize=12)
+    plt.ylabel("NDVI", fontsize=12)
+    plt.xticks(rotation=45, fontsize=10)
+    plt.yticks(fontsize=10)
+    plt.legend(title="Classes et statistiques", fontsize=10)
+    plt.grid(True, linestyle="--", alpha=0.6)
+
+    # Sauvegarder le graphique
+    output_path = os.path.join(output_folder, "temp_mean_ndvi.png")
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
+
+    logging.info(f"Graphique sauvegardé : {output_path}")
