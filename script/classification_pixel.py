@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 # personal libraries
 import classification as cla
 import read_and_write as rw
-from my_function import rasterize
+from my_function import rasterize, plot_class_quality
 import plots
 
 my_folder = '/home/onyxia/work/data/project/tmp_classif'
@@ -128,7 +128,7 @@ for key in keys:
 
 # 9 --- Display and save results
 plots.plot_cm(average_cm, np.unique(Y), out_filename=out_matrix)
-plots.plot_class_quality(average_report, average_accuracy, out_filename=out_qualite)
+plot_class_quality(average_report, average_accuracy, out_filename=out_qualite)
 
 # 5 --- apply on the whole image
 # load image

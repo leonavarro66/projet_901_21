@@ -758,3 +758,58 @@ def calculate_distance(centroid, pixel_x, pixel_y):
         int: La distance au centroide
     """
     return np.sqrt((centroid[0] - pixel_x) ** 2 + (centroid[1] - pixel_y) ** 2)
+
+def plot_class_quality(report, accuracy, out_filename=None):
+    """
+    Display a plot bar of quality metrics of each class.
+
+    Parameters
+    ----------
+    report : dict
+        Classification report (output of the `classification_report` function
+        of scikit-learn.
+    accuracy : float
+        Overall accuracy.
+    out_filename : str (optional)
+        If indicated, the chart is saved at the `out_filename` location
+    """
+    report_df = pd.DataFrame.from_dict(report)
+    # drop columns (axis=1) same as numpy
+    try :
+        report_df = report_df.drop(['accuracy', 'macro avg', 'weighted avg'],
+                                   axis=1, errors="ignore")
+    except KeyError:
+        report_df = report_df.drop(['micro avg', 'macro avg', 'weighted avg'],
+                                   axis=1, errors="ignore")
+    # drop rows (axis=0) same as numpy
+    report_df = report_df.drop(['support'], axis=0, errors="ignore")
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax = report_df.T.plot.bar(ax=ax, zorder=2)
+
+    # custom : information
+    ax.text(0.05, 0.95, 'OA : {:.2f}'.format(accuracy), fontsize=14)
+    ax.set_title('Class quality estimation')
+
+    # custom : cuteness
+    # background color
+    ax.set_facecolor('ivory')
+    # labels
+    x_label = ax.get_xlabel()
+    ax.set_xlabel(x_label, fontdict={'fontname': 'Sawasdee'}, fontsize=14)
+    y_label = ax.get_ylabel()
+    ax.set_ylabel(y_label, fontdict={'fontname': 'Sawasdee'}, fontsize=14)
+    # borders
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["bottom"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    ax.tick_params(axis='x', colors='darkslategrey', labelsize=14)
+    ax.tick_params(axis='y', colors='darkslategrey', labelsize=14)
+    # grid
+    ax.minorticks_on()
+    ax.yaxis.grid(which='major', color='darkgoldenrod', linestyle='--',
+                  linewidth=0.5, zorder=1)
+    ax.yaxis.grid(which='minor', color='darkgoldenrod', linestyle='-.',
+                  linewidth=0.3, zorder=1)
+    if out_filename:
+        plt.savefig(out_filename, bbox_inches='tight')
