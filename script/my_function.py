@@ -813,3 +813,45 @@ def plot_class_quality(report, accuracy, out_filename=None):
                   linewidth=0.3, zorder=1)
     if out_filename:
         plt.savefig(out_filename, bbox_inches='tight')
+
+
+def classify_polygon(stats, area_ha):
+    """Applique l'arbre de décision aux statistiques des classes en utilisant les codes.
+
+    Args:
+        stats (dict): Dictionnaire regroupant les statistiques zonales
+        area_ha (reel): Surface en hectare
+
+    Returns:
+        integer: Code prédit
+    """
+    total = sum(stats.values())
+    
+    if total == 0:
+        return -1  # Code spécial pour indiquer les polygones qui n'ont pas de données (No data présente)
+
+    feuillus = (stats.get(11, 0) + stats.get(12, 0) + stats.get(13, 0) + stats.get(14, 0)) / total * 100  # Pourcentage d'essences propres de feuillus
+    coniferes = (stats.get(21, 0) + stats.get(22, 0) + stats.get(23, 0) + stats.get(24, 0) + stats.get(25, 0)) / total * 100  # Pourcentage d'essences propres de conifères
+    
+    if area_ha < 2:  # Surface < 2 ha
+        if feuillus > 75:
+            return 16
+        elif coniferes > 75:
+            return 27
+        elif coniferes > feuillus:
+            return 28
+        else:
+            return 29
+    else:  # Surface > 2 ha
+        classes_C = [11, 12, 13, 14, 21, 22, 23, 24, 25]
+        for code in classes_C:
+            if stats.get(code, 0) / total * 100 > 75:
+                return code  # Retourne le code dominant
+        if feuillus > 75:
+            return 15
+        elif coniferes > 75:
+            return 26
+        elif coniferes > feuillus:
+            return 28
+        else:
+            return 29
