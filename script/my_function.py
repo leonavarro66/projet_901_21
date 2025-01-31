@@ -5,11 +5,12 @@
 
 import os
 import re
+import subprocess
+import logging
 import geopandas as gpd
 import pandas as pd
 import matplotlib.pyplot as plt
-import subprocess
-import logging
+
 import numpy as np
 from osgeo import gdal
 
@@ -28,16 +29,16 @@ def rasterize(
     """
     Fonction permettant de rasteriser un shapefile en fonction d'une couche de référence.
 
-    Paramètres :
-    - in_vector (str): Chemin vers le shapefile à rasteriser.
-    - ref_image (GeoDataFrame): GeoDataFrame représentant l'image de référence (utilisé pour l'emprise).
-    - out_image (str): Chemin où l'image rasterisée sera sauvegardée.
-    - spatial_res (float): Résolution spatiale à utiliser pour le raster.
-    - data_type (str): Type de données pour le raster (par exemple, 'Byte', 'UInt16', etc.).
-    - driver (str): Driver de format à utiliser pour la sortie (par exemple, 'GTiff' pour GeoTIFF).
-    - field_name (str): Nom du champ à utiliser pour la rasterisation.
-    - proj (str): Projection par défaut EPSG:2154
-    - no_data (int): Valeur de no data
+    Args :
+        in_vector (str): Chemin vers le shapefile à rasteriser.
+        ref_image (GeoDataFrame): GeoDataFrame représentant l'image de référence.
+        out_image (str): Chemin où l'image rasterisée sera sauvegardée.
+        spatial_res (float): Résolution spatiale à utiliser pour le raster.
+        data_type (str): Type de données pour le raster (par exemple, 'Byte', 'UInt16', etc.).
+        driver (str): Driver de format à utiliser pour la sortie (par exemple, 'GTiff').
+        field_name (str): Nom du champ à utiliser pour la rasterisation.
+        proj (str): Projection par défaut EPSG:2154
+        no_data (int): Valeur de no data
     
     Exceptions :
         ValueError: Si un paramètre est invalide ou si la commande échoue.
@@ -56,8 +57,8 @@ def rasterize(
     try:
         xmin, ymin, xmax, ymax = ref_image.total_bounds
     except Exception as e:
-        raise ValueError(f"Erreur lors de l'extraction des limites de l'emprise : {e}")
-    
+        raise ValueError(f"Erreur lors de l'extraction des limites de l'emprise : {e}") from e
+
     # Définir la commande à exécuter avec les paramètres appropriés
     cmd_pattern = (
         "gdal_rasterize -a {field_name} "
@@ -75,21 +76,27 @@ def rasterize(
     )
 
     # Affichage de la commande pour vérification
-    logging.info(f"Commande de rasterisation : {cmd}")
+    logging.info("Commande de rasterisation : %s", cmd)
 
     # Exécution de la commande
     try:
-        result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+            )
         logging.info(result.stdout.decode())  # Afficher la sortie standard
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.decode() if e.stderr else "Erreur inconnue."
-        raise ValueError(f"Erreur lors de l'exécution de la commande gdal_rasterize : {error_msg}")
+        raise ValueError(f"Erreur lors de l'exécution de gdal_rasterize : {error_msg}") from e
 
     # Confirmer que l'image a été créée
     if not os.path.exists(out_image):
         raise ValueError(f"L'image de sortie '{out_image}' n'a pas été créée.")
-    
-    logging.info(f"Rasterisation terminée, fichier sauvegardé à : {out_image}")
+
+    logging.info("Rasterisation terminée, fichier sauvegardé à : %s", out_image)
 
 
 def classify_geodataframe(
@@ -100,22 +107,21 @@ def classify_geodataframe(
     code_column="Code",
     name_column="Nom",
 ):
-    """
-    Automatise le traitement des données pour mapper des valeurs et filtrer un GeoDataFrame.
+    """Automatise le traitement des données pour mapper des valeurs et filtrer un GeoDataFrame.
 
-    Paramètres :
-    - gdf (GeoDataFrame) : Le GeoDataFrame à traiter.
-    - mapping_column (str) : Le nom de la colonne utilisée pour effectuer le mapping.
-    - code_mapping (dict) : Dictionnaire de correspondance pour les codes.
-    - name_mapping (dict) : Dictionnaire de correspondance pour les noms.
-    - code_column (str) : Nom de la colonne de sortie pour les codes (par défaut 'Code').
-    - name_column (str) : Nom de la colonne de sortie pour les noms (par défaut 'Nom').
+    Args :
+        gdf (GeoDataFrame) : Le GeoDataFrame à traiter.
+        mapping_column (str) : Le nom de la colonne utilisée pour effectuer le mapping.
+        code_mapping (dict) : Dictionnaire de correspondance pour les codes.
+        name_mapping (dict) : Dictionnaire de correspondance pour les noms.
+        code_column (str) : Nom de la colonne de sortie pour les codes (par défaut 'Code').
+        name_column (str) : Nom de la colonne de sortie pour les noms (par défaut 'Nom').
 
-    Retour :
-    - GeoDataFrame : Le GeoDataFrame nettoyé et enrichi.
+    Return :
+        GeoDataFrame : Le GeoDataFrame nettoyé et enrichi.
 
     Exceptions :
-    - ValueError : Si la colonne de mapping n'existe pas ou si le GeoDataFrame est vide.
+        ValueError : Si la colonne de mapping n'existe pas ou si le GeoDataFrame est vide.
     """
     try:
         # Vérifier si le GeoDataFrame est valide
@@ -152,17 +158,16 @@ def filter_and_clip_geodata(
     emprise_gdf_path,
     output_path
 ):
-    """
-    Filtre les polygones pour qu'ils soient entièrement inclus dans l'emprise 
+    """Filtre les polygones pour qu'ils soient entièrement inclus dans l'emprise 
     et réalise une découpe.
 
-    Paramètres :
-    - to_clip_gdf_path (GeoDataFrame) : GeoDataFrame du shapefile à découper.
-    - emprise_gdf_path (str) : Chemin du fichier shapefile d'emprise.
-    - output_path (str) : Chemin du fichier de sortie.
+    Args :
+        to_clip_gdf_path (GeoDataFrame) : GeoDataFrame du shapefile à découper.
+        emprise_gdf_path (str) : Chemin du fichier shapefile d'emprise.
+        output_path (str) : Chemin du fichier de sortie.
 
-    Retour :
-    - GeoDataFrame : Le GeoDataFrame découpé.
+    Return :
+        GeoDataFrame : Le GeoDataFrame découpé.
     """
     try:
         # Charger les fichiers
@@ -172,13 +177,13 @@ def filter_and_clip_geodata(
         if to_clip_gdf.crs != emprise_gdf.crs:
             print("Les CRS diffèrent. Reprojection de l'emprise pour correspondre...")
             emprise_gdf = emprise_gdf.to_crs(to_clip_gdf.crs)
-        
+
         # Découpe du GeoDataFrame
         clipped_gdf = gpd.clip(to_clip_gdf, emprise_gdf)
 
         # Sauvegarde du fichier filtré
         clipped_gdf.to_file(output_path)
-        print(f"Filtrage et découpe réalisés avec succès ! Résultat sauvegardé dans : {output_path}")
+        print(f"Filtrage et découpe réalisés avec succès ! Sauvegardé dans : {output_path}")
 
         return clipped_gdf
 
@@ -188,13 +193,15 @@ def filter_and_clip_geodata(
 
 
 def count_polygons_by_class(gdf, class_column, selected_classes):
-    """
-    Compte le nombre de polygones par classe pour les classes sélectionnées.
+    """Compte le nombre de polygones par classe pour les classes sélectionnées.
 
-    :param gdf: GeoDataFrame contenant les données des polygones.
-    :param class_column: Nom de la colonne contenant les classes.
-    :param selected_classes: Liste des classes à analyser.
-    :return: Dictionnaire avec les classes comme clés et le nombre de polygones comme valeurs.
+    Args :
+        gdf (GeoDataFrame) : GeoDataFrame contenant les données des polygones.
+        class_column (str) : Nom de la colonne contenant les classes.
+        selected_classes (list) : Liste des classes à analyser.
+
+    Return : 
+        dict : Dictionnaire avec les classes comme clés et le nombre de polygones comme valeurs.
     """
     class_counts = {}
 
@@ -205,19 +212,22 @@ def count_polygons_by_class(gdf, class_column, selected_classes):
     return class_counts
 
 
-def rasteriser_avec_gdal(in_vector, out_image, resolution_spatiale, nom_champ, type_donnee="UInt16"):
+def rasteriser_avec_gdal(
+    in_vector,
+    out_image,
+    resolution_spatiale,
+    nom_champ,
+    type_donnee="UInt16"
+    ):
     """
     Rasterise un fichier vecteur en un fichier raster en utilisant GDAL.
 
-    Paramètres :
-    - in_vector (str) : Chemin vers le fichier vecteur d'entrée (shapefile).
-    - out_image (str) : Chemin vers le fichier raster de sortie.
-    - resolution_spatiale (float) : Résolution spatiale pour le raster.
-    - nom_champ (str) : Nom du champ d'attribut à graver dans le raster.
-    - type_donnee (str) : Type de données GDAL pour le raster (par défaut : UInt16).
-
-    Retourne :
-    - None
+    Args :
+        in_vector (str) : Chemin vers le fichier vecteur d'entrée (shapefile).
+        out_image (str) : Chemin vers le fichier raster de sortie.
+        resolution_spatiale (float) : Résolution spatiale pour le raster.
+        nom_champ (str) : Nom du champ d'attribut à graver dans le raster.
+        type_donnee (str) : Type de données GDAL pour le raster (par défaut : UInt16).
     """
     try:
         # Ouvrir le fichier vecteur
@@ -266,24 +276,23 @@ def rasteriser_avec_gdal(in_vector, out_image, resolution_spatiale, nom_champ, t
         raster_ds = None
         vector_ds = None
 
-        logging.info(f"Rasterisation terminée. Résultat enregistré dans {out_image}")
+        logging.info("Rasterisation terminée. Résultat enregistré dans %o", out_image)
 
     except Exception as e:
-        logging.error(f"Erreur lors de la rasterisation : {e}")
+        logging.error("Erreur lors de la rasterisation : %e", e)
         raise
 
 
 def count_pixels_by_class(gdf, colonne_classe, classes_selectionnees):
-    """
-    Compte le nombre de pixels par classe en rasterisant les polygones.
+    """Compte le nombre de pixels par classe en rasterisant les polygones.
 
-    Paramètres :
-    - gdf (GeoDataFrame) : GeoDataFrame contenant les polygones.
-    - colonne_classe (str) : Nom de la colonne contenant les valeurs des classes.
-    - classes_selectionnees (list) : Liste des classes à analyser.
+    Args :
+        gdf (GeoDataFrame) : GeoDataFrame contenant les polygones.
+        colonne_classe (str) : Nom de la colonne contenant les valeurs des classes.
+        classes_selectionnees (list) : Liste des classes à analyser.
 
-    Retourne :
-    - dict : Un dictionnaire avec les classes comme clés et le nombre de pixels comme valeurs.
+    Return :
+        dict : Un dictionnaire avec les classes comme clés et le nombre de pixels comme valeurs.
     """
     # Créer des chemins temporaires pour les fichiers vecteur et raster
     vecteur_temp = "/tmp/temp_vector.shp"
@@ -318,7 +327,7 @@ def count_pixels_by_class(gdf, colonne_classe, classes_selectionnees):
         return compteur_pixels
 
     except Exception as e:
-        logging.error(f"Erreur lors du comptage des pixels : {e}")
+        logging.error("Erreur lors du comptage des pixels : %e", e)
         return {}
 
     finally:
@@ -330,17 +339,19 @@ def count_pixels_by_class(gdf, colonne_classe, classes_selectionnees):
 
 
 def prepare_violin_plot_data(gdf, class_column, pixel_column):
-    """
-    Prépare les données pour un "violin plot" montrant la distribution du nombre de pixels par polygone, par classe.
+    """Prépare les données pour un "violin plot".
 
-    :param gdf: GeoDataFrame contenant les données des polygones.
-    :param class_column: Nom de la colonne contenant les classes.
-    :param pixel_column: Nom de la colonne contenant le nombre de pixels.
-    :return: DataFrame avec les colonnes "Classe" et "Pixels".
+    Args :
+        gdf (GeoDataFrame) : GeoDataFrame contenant les données des polygones.
+        class_column (str) : Nom de la colonne contenant les classes.
+        pixel_column (str) : Nom de la colonne contenant le nombre de pixels.
+    
+    Return : 
+        DataFrame : DataFrame avec les colonnes "Classe" et "Pixels".
     """
     # Vérifier que les colonnes nécessaires existent
     if class_column not in gdf.columns or pixel_column not in gdf.columns:
-        raise ValueError(f"Les colonnes {class_column} et {pixel_column} doivent exister dans le GeoDataFrame.")
+        raise ValueError(f"Les colonnes {class_column} et {pixel_column} doivent exister.")
 
     # Filtrer les lignes ayant des valeurs non nulles dans les colonnes spécifiées
     filtered_gdf = gdf.dropna(subset=[class_column, pixel_column])
@@ -352,7 +363,6 @@ def prepare_violin_plot_data(gdf, class_column, pixel_column):
 
     return violin_data
 
-from osgeo import gdal
 
 def clip_raster(
     in_raster,
@@ -365,19 +375,18 @@ def clip_raster(
     proj="EPSG:2154",
     no_data=0
 ):
-    """
-    Fonction permettant de découper un raster en fonction d'une couche de référence.
+    """Fonction permettant de découper un raster en fonction d'une couche de référence.
 
-    Paramètres :
-    - in_raster (str): Chemin vers le raster à découper.
-    - ref_image (str): Chemin vers le shape de l'emprise.
-    - ref_image_gdf (GeoDataFrame): GeoDataFrame représentant l'image de référence (utilisé pour l'emprise).
-    - out_image (str): Chemin où l'image découpée sera sauvegardée.
-    - spatial_res (float): Résolution spatiale à utiliser pour le raster.
-    - data_type (str): Type de données pour le raster (par exemple, 'Byte', 'UInt16', etc.).
-    - driver (str): Driver de format à utiliser pour la sortie (par exemple, 'GTiff' pour GeoTIFF).
-    - proj (str): Projection par défaut EPSG:2154
-    - no_data (int): Valeur de no data
+    Args :
+        in_raster (str): Chemin vers le raster à découper.
+        ref_image (str): Chemin vers le shape de l'emprise.
+        ref_image_gdf (GeoDataFrame): GeoDataFrame représentant l'image de référence.
+        out_image (str): Chemin où l'image découpée sera sauvegardée.
+        spatial_res (float): Résolution spatiale à utiliser pour le raster.
+        data_type (str): Type de données pour le raster (par exemple, 'Byte', 'UInt16', etc.).
+        driver (str): Driver de format à utiliser pour la sortie (par exemple, 'GTiff').
+        proj (str): Projection par défaut EPSG:2154
+        no_data (int): Valeur de no data
     
     Exceptions :
         ValueError: Si un paramètre est invalide ou si la commande échoue.
@@ -396,8 +405,8 @@ def clip_raster(
     try:
         xmin, ymin, xmax, ymax = ref_image_gdf.total_bounds
     except Exception as e:
-        raise ValueError(f"Erreur lors de l'extraction des limites de l'emprise : {e}")
-    
+        raise ValueError(f"Erreur lors de l'extraction des limites de l'emprise : {e}") from e
+
     # Définir la commande à exécuter avec les paramètres appropriés
     cmd_pattern = (
         "gdalwarp -cutline {ref_image} "
@@ -416,21 +425,27 @@ def clip_raster(
     )
 
     # Affichage de la commande pour vérification
-    logging.info(f"Commande de découpage raster : {cmd}")
+    logging.info("Commande de découpage raster : %c", cmd)
 
     # Exécution de la commande
     try:
-        result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+            )
         logging.info(result.stdout.decode())  # Afficher la sortie standard
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.decode() if e.stderr else "Erreur inconnue."
-        raise ValueError(f"Erreur lors de l'exécution de la commande gdalwarp : {error_msg}")
+        raise ValueError(f"Erreur lors de l'exécution de la commande gdalwarp : {error_msg}") from e
 
     # Confirmer que l'image a été créée
     if not os.path.exists(out_image):
         raise ValueError(f"L'image de sortie '{out_image}' n'a pas été créée.")
 
-    logging.info(f"Découpage terminée, fichier sauvegardé à : {out_image}")
+    logging.info("Découpage terminée, fichier sauvegardé à : %o", out_image)
 
 
 def apply_mask(
@@ -442,17 +457,16 @@ def apply_mask(
     expression,
     no_data=0
 ):
-    """
-    Fonction permettant d'appliquer un masque sur un raster.
+    """Fonction permettant d'appliquer un masque sur un raster.
 
-    Paramètres :
-    - in_raster (str): Chemin vers le raster où appliquer le masque.
-    - masque_image (str): Chemin vers le masque.
-    - out_image (str): Chemin où l'image avec le masque sera sauvegardée.
-    - data_type (str): Type de données pour le raster (par exemple, 'Byte', 'UInt16', etc.).
-    - driver (str): Driver de format à utiliser pour la sortie (par exemple, 'GTiff' pour GeoTIFF).
-    - expression (str): Expression à effectuer pour le masque
-    - no_data (int): Valeur de no data
+    Args :
+        in_raster (str): Chemin vers le raster où appliquer le masque.
+        masque_image (str): Chemin vers le masque.
+        out_image (str): Chemin où l'image avec le masque sera sauvegardée.
+        data_type (str): Type de données pour le raster (par exemple, 'Byte', 'UInt16', etc.).
+        driver (str): Driver de format à utiliser pour la sortie (par exemple, 'GTiff').
+        expression (str): Expression à effectuer pour le masque
+        no_data (int): Valeur de no data
     
     Exceptions :
         ValueError: Si un paramètre est invalide ou si la commande échoue.
@@ -463,7 +477,7 @@ def apply_mask(
     # Vérification des paramètres
     if not os.path.exists(masque_image):
         raise ValueError(f"Le fichier d'entrée '{masque_image}' n'existe pas.")
-    
+
     # Définir la commande à exécuter avec les paramètres appropriés
     cmd_pattern = (
         "gdal_calc "
@@ -483,26 +497,37 @@ def apply_mask(
     )
 
     # Affichage de la commande pour vérification
-    logging.info(f"Commande de calcul raster : {cmd}")
+    logging.info("Commande de calcul raster : %c", cmd)
 
     # Exécution de la commande
     try:
-        result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+            )
         logging.info(result.stdout.decode())  # Afficher la sortie standard
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.decode() if e.stderr else "Erreur inconnue."
-        raise ValueError(f"Erreur lors de l'exécution de la commande gdal_calc : {error_msg}")
+        raise ValueError(f"Erreur lors de l'exécution de gdal_calc : {error_msg}") from e
 
     # Confirmer que l'image a été créée
     if not os.path.exists(out_image):
         raise ValueError(f"L'image de sortie '{out_image}' n'a pas été créée.")
-    
-    logging.info(f"Calcul terminée, fichier sauvegardé à : {out_image}")
+
+    logging.info("Calcul terminée, fichier sauvegardé à : %o", out_image)
 
 
-def concat_bands(input_files, output_file, data_type, no_data, separate=True, output_format="GTiff"):
-    """
-    Fusionne plusieurs rasters mono-bande en un seul fichier raster.
+def concat_bands(
+    input_files,
+    output_file,
+    data_type,
+    no_data,
+    separate=True,
+    output_format="GTiff"):
+    """Fusionne plusieurs rasters mono-bande en un seul fichier raster.
 
     Args:
         input_files (list): Liste des fichiers raster à fusionner.
@@ -536,30 +561,40 @@ def concat_bands(input_files, output_file, data_type, no_data, separate=True, ou
     )
 
     # Affichage de la commande pour vérification
-    logging.info(f"Commande de fusion des rasters : {cmd}")
+    logging.info("Commande de fusion des rasters : %c", cmd)
 
     # Exécution de la commande
     try:
-        result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+            )
         logging.info(result.stdout.decode())  # Afficher la sortie standard
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.decode() if e.stderr else "Erreur inconnue."
-        raise ValueError(f"Erreur lors de l'exécution de la commande gdal_merge.py : {error_msg}")
+        raise ValueError(f"Erreur lors de l'exécution de gdal_merge.py : {error_msg}") from e
 
 
-def calculate_ndvi(input_folder, output_folder, expression, data_type="Float32", driver="GTiff", no_data=-9999):
-    """
-    Calcule le NDVI pour chaque date à partir des fichiers raster dans le dossier d'entrée,
+def calculate_ndvi(
+    input_folder,
+    output_folder,
+    expression,
+    data_type="Float32",
+    driver="GTiff",
+    no_data=-9999):
+    """Calcule le NDVI pour chaque date à partir des fichiers raster dans le dossier d'entrée,
     et sauvegarde les résultats dans un fichier raster multibandes.
 
-    Args
-
-    - input_folder (str): Dossier contenant les fichiers raster (B4 et B8)
-    - output_folder (str): Dossier où les fichiers NDVI seront sauvegardés
-    - expression (str): Expression à calculer
-    - data_type (str): Type de données pour le raster (par exemple, 'Byte', 'UInt16', etc.).
-    - driver (str): Driver de format à utiliser pour la sortie (par exemple, 'GTiff' pour GeoTIFF).
-    - no_data (int): Valeur de no data
+    Args :
+        input_folder (str): Dossier contenant les fichiers raster (B4 et B8)
+        output_folder (str): Dossier où les fichiers NDVI seront sauvegardés
+        expression (str): Expression à calculer
+        data_type (str): Type de données pour le raster (par exemple, 'Byte', 'UInt16', etc.).
+        driver (str): Driver de format à utiliser pour la sortie (par exemple, 'GTiff').
+        no_data (int): Valeur de no data
     """
     # Assurez-vous que le dossier temporaire existe
     os.makedirs(output_folder, exist_ok=True)
@@ -619,25 +654,31 @@ def calculate_ndvi(input_folder, output_folder, expression, data_type="Float32",
             )
 
             # Exécution de la commande
-            logging.info(f"Commande de calcul raster : {cmd}")
+            logging.info("Commande de calcul raster : %c", cmd)
             try:
-                result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                result = subprocess.run(
+                    cmd,
+                    shell=True,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
                 logging.info(result.stdout.decode())  # Afficher la sortie standard
             except subprocess.CalledProcessError as e:
                 error_msg = e.stderr.decode() if e.stderr else "Erreur inconnue."
-                raise ValueError(f"Erreur lors de l'exécution de la commande gdal_calc : {error_msg}")
+                raise ValueError(f"Erreur lors de l'exécution de gdal_calc : {error_msg}") from e
         else:
-            logging.warning(f"Bandes nécessaires (B4, B8) manquantes pour la date {date}")
+            logging.warning("Bandes nécessaires (B4, B8) manquantes pour la date %d", date)
 
 
 def analyze_phenology_gdal_alternative(ndvi_raster, shapefile, output_folder, dates):
-    """
-    Analyse la phénologie des classes de la BD forêt classifié et produit un graphique amélioré.
+    """Analyse la phénologie des classes de la BD forêt classifié et produit un graphique amélioré.
 
-    :param ndvi_raster: Chemin du raster multibandes NDVI
-    :param shapefile: Chemin du shapefile de la BD forêt classifié
-    :param output_folder: Dossier pour sauvegarder les résultats
-    :param dates: Liste des dates associées aux bandes du raster NDVI
+    Args :
+        ndvi_raster (str) : Chemin du raster multibandes NDVI
+        shapefile (str) : Chemin du shapefile de la BD forêt classifié
+        output_folder (str) : Dossier pour sauvegarder les résultats
+        dates (list) : Liste des dates associées aux bandes du raster NDVI
+
     """
     # Classes pertinentes
     selected_classes = [12, 13, 14, 23, 24, 25]
@@ -655,7 +696,7 @@ def analyze_phenology_gdal_alternative(ndvi_raster, shapefile, output_folder, da
     bands_count = 6  # Supposons que le raster NDVI contient 6 bandes temporelles
 
     for i in range(1, bands_count + 1):
-        logging.info(f"Traitement de la bande {i}...")
+        logging.info("Traitement de la bande %i...", i)
         temp_band_raster = f"/home/onyxia/work/data/project/tmp/temp_band_{i}.tif"
 
         # Extraire la bande NDVI i
@@ -666,7 +707,7 @@ def analyze_phenology_gdal_alternative(ndvi_raster, shapefile, output_folder, da
         subprocess.run(cmd_extract_band, shell=True, check=True)
 
         for cls in selected_classes:
-            logging.info(f"Traitement de la classe {cls}...")
+            logging.info("Traitement de la classe %c...", cls)
 
             # Créer un masque pour la classe
             temp_mask = f"/home/onyxia/work/data/project/tmp/temp_mask_{cls}.shp"
@@ -686,7 +727,11 @@ def analyze_phenology_gdal_alternative(ndvi_raster, shapefile, output_folder, da
             # Obtenir les statistiques avec gdalinfo
             cmd_get_stats = f"gdalinfo -stats {temp_cropped_raster}"
             result = subprocess.run(
-                cmd_get_stats, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                cmd_get_stats,
+                shell=True,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
             )
             stats_output = result.stdout.decode()
 
@@ -718,12 +763,15 @@ def analyze_phenology_gdal_alternative(ndvi_raster, shapefile, output_folder, da
 
         # Tracer la moyenne
         plt.plot(
-            dates, mean_values, label=f"Classe {cls} - {class_names.get(cls, 'Inconnu')} (Moyenne)", linewidth=2
+            dates, mean_values,
+            label=f"Classe {cls} - {class_names.get(cls, 'Inconnu')} (Moyenne)",
+            linewidth=2
         )
 
         # Tracer l'écart type (points et lignes discontinues)
         plt.plot(
-            dates, std_values, label=f"Classe {cls} - {class_names.get(cls, 'Inconnu')} (Écart Type)",
+            dates, std_values,
+            label=f"Classe {cls} - {class_names.get(cls, 'Inconnu')} (Écart Type)",
             linestyle="--", linewidth=1.5
         )
 
@@ -742,7 +790,7 @@ def analyze_phenology_gdal_alternative(ndvi_raster, shapefile, output_folder, da
     plt.savefig(output_path)
     plt.close()
 
-    logging.info(f"Graphique sauvegardé : {output_path}")
+    logging.info("Graphique sauvegardé : %o", output_path)
 
 
 # Fonction pour calculer la distance au centroïde
@@ -783,11 +831,11 @@ def plot_class_quality(report, accuracy, out_filename=None):
                                    axis=1, errors="ignore")
     # drop rows (axis=0) same as numpy
     report_df = report_df.drop(['support'], axis=0, errors="ignore")
-    fig, ax = plt.subplots(figsize=(10, 7))
+    _, ax = plt.subplots(figsize=(10, 7))
     ax = report_df.T.plot.bar(ax=ax, zorder=2)
 
     # custom : information
-    ax.text(0.05, 0.95, 'OA : {:.2f}'.format(accuracy), fontsize=14)
+    ax.text(0.05, 0.95, f'OA : {accuracy:.2f}', fontsize=14)
     ax.set_title('Class quality estimation')
 
     # custom : cuteness
@@ -826,13 +874,20 @@ def classify_polygon(stats, area_ha):
         integer: Code prédit
     """
     total = sum(stats.values())
-    
-    if total == 0:
-        return -1  # Code spécial pour indiquer les polygones qui n'ont pas de données (No data présente)
 
-    feuillus = (stats.get(11, 0) + stats.get(12, 0) + stats.get(13, 0) + stats.get(14, 0)) / total * 100  # Pourcentage d'essences propres de feuillus
-    coniferes = (stats.get(21, 0) + stats.get(22, 0) + stats.get(23, 0) + stats.get(24, 0) + stats.get(25, 0)) / total * 100  # Pourcentage d'essences propres de conifères
-    
+    if total == 0:
+        return -1  # Code spécial pour les polygones qui n'ont pas de données (No data présente)
+
+    feuillus = (stats.get(11, 0) +
+                stats.get(12, 0) +
+                stats.get(13, 0) +
+                stats.get(14, 0)) / total * 100  # Pourcentage d'essences propres de feuillus
+    coniferes = (stats.get(21, 0) +
+                stats.get(22, 0) +
+                stats.get(23, 0) +
+                stats.get(24, 0) +
+                stats.get(25, 0)) / total * 100  # Pourcentage d'essences propres de conifères
+
     if area_ha < 2:  # Surface < 2 ha
         if feuillus > 75:
             return 16
@@ -843,8 +898,8 @@ def classify_polygon(stats, area_ha):
         else:
             return 29
     else:  # Surface > 2 ha
-        classes_C = [11, 12, 13, 14, 21, 22, 23, 24, 25]
-        for code in classes_C:
+        classes_c = [11, 12, 13, 14, 21, 22, 23, 24, 25]
+        for code in classes_c:
             if stats.get(code, 0) / total * 100 > 75:
                 return code  # Retourne le code dominant
         if feuillus > 75:
