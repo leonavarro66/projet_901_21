@@ -3,8 +3,6 @@ import logging
 sys.path.append('/home/onyxia/work/projet_901_21/script')
 from my_function import analyze_phenology_gdal_alternative
 
-logging.basicConfig(level=logging.INFO)
-
 
 # Initialisation des paramètres
 ndvi_raster = "/home/onyxia/work/projet_901_21/results/data/img_pretraitees/Serie_temp_S2_ndvi.tif"  # Raster NDVI multibandes

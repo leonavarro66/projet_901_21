@@ -562,7 +562,8 @@ def calculate_ndvi(input_folder, output_folder, expression, data_type="Float32",
     - no_data (int): Valeur de no data
     """
     # Assurez-vous que le dossier temporaire existe
-    os.makedirs(output_folder, exist_ok=True)
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
     # Expression régulière pour extraire la date et la bande
     date_regex = r"(\d{8}-\d{6}-\d{3})"
@@ -641,7 +642,12 @@ def analyze_phenology_gdal_alternative(ndvi_raster, shapefile, output_folder, da
     """
     # Classes pertinentes
     selected_classes = [12, 13, 14, 23, 24, 25]
-    os.makedirs(output_folder, exist_ok=True)
+    
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    
+    if not os.path.exists("/home/onyxia/work/data/project/tmp"):
+        os.makedirs("/home/onyxia/work/data/project/tmp")
 
     # Charger les noms des classes à partir du shapefile
     gdf = gpd.read_file(shapefile)

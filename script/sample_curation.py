@@ -18,6 +18,9 @@ vector_filename = os.path.join(my_data_folder, 'project', 'FORMATION_VEGETALE.sh
 emprise_filename = os.path.join(my_data_folder, 'project', 'emprise_etude.shp')
 bd_foret_classee_decoupe_filename = os.path.join(my_result_folder_out, 'sample', 'Sample_BD_foret_T31TCJ.shp')
 
+if not os.path.exists(os.path.join(my_result_folder_out, 'sample')):
+    os.makedirs(os.path.join(my_result_folder_out, 'sample'))
+
 # Lecture du jeu de données de la bd_foret et de l'emprise d'etude
 bd_foret = gpd.read_file(vector_filename)
 

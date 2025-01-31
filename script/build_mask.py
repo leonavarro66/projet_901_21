@@ -34,6 +34,11 @@ bd_foret.to_file(bd_foret_filtree_filename)
 
 # Paramètres de rasterisation
 out_image = os.path.join(my_result_folder_out, 'img_pretraitees', 'masque_foret.tif')  # Chemin vers l'image de sortie
+
+if not os.path.exists(os.path.join(my_result_folder_out, 'img_pretraitees')):
+    os.makedirs(os.path.join(my_result_folder_out, 'img_pretraitees'))
+
+
 field_name = 'bin'  # Champ contenant les valeurs de rasterisation
 spatial_res = 10  # Résolution spatiale de 10 m
 data_type = 'Byte'  # Type de données de sortie

@@ -24,8 +24,8 @@ sample_shp = os.path.join(my_folder_result, 'sample', 'Sample_BD_foret_T31TCJ.sh
 emprise_shp = '/home/onyxia/work/data/project/emprise_etude.shp'
 
 # Créer le dossier de sortie s'il n'existe pas
-if not os.path.exists(my_folder_result):
-    os.makedirs(my_folder_result)
+if not os.path.exists(os.path.join(my_folder_result, 'classif')):
+    os.makedirs(os.path.join(my_folder_result, 'classif'))
 
 # Créer le dossier de sortie s'il n'existe pas
 if not os.path.exists(my_folder):
