@@ -910,3 +910,23 @@ def classify_polygon(stats, area_ha):
             return 28
         else:
             return 29
+
+def custom_sort_key(filename, band_order):
+    """Permet de filtrer les fichiers des bandes pour qu'il soit ordonné pour la concaténation
+
+    Args:
+        filename (str): Fichiers rasters
+        band_order (list): Ordre des bandes souhaitées
+
+    Returns:
+        int: Retourne une clé
+    """
+    # Modifier l'expression régulière pour capturer correctement B8A
+    match = re.search(r"(\d{8}-\d{6}-\d{3}).*_(B(?:8A|\d{1,2}))_", filename)
+    if match:
+        date = match.group(1)
+        band = match.group(2)
+        # Retourner une clé basée sur l'ordre des dates et des bandes
+        return (date, band_order.index(band))
+    # Clé par défaut pour les fichiers ne correspondant pas au schéma
+    return ("", float('inf'))
