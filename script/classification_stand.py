@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+"""
+@author: navarro leo, biou romain, sala mathieu
+"""
+
 import sys
 sys.path.append('/home/onyxia/work/projet_901_21/script')
 sys.path.append('/home/onyxia/work/libsigma')
@@ -11,11 +16,11 @@ from sklearn.metrics import confusion_matrix
 from my_function import classify_polygon
 import plots
 
-my_folder_result = '/home/onyxia/work/projet_901_21/results/data'
+MY_FOLDER_RESULT = '/home/onyxia/work/projet_901_21/results/data'
 
 # Charger les fichiers d'entrées
-raster_path = os.path.join(my_folder_result, 'classif', 'carte_essences_echelle_pixel.tif')
-bd_foret_path = os.path.join(my_folder_result, 'sample', 'Sample_BD_foret_T31TCJ.shp')
+raster_path = os.path.join(MY_FOLDER_RESULT, 'classif', 'carte_essences_echelle_pixel.tif')
+bd_foret_path = os.path.join(MY_FOLDER_RESULT, 'sample', 'Sample_BD_foret_T31TCJ.shp')
 
 # Charger le shapefile
 bd_foret = gpd.read_file(bd_foret_path)
@@ -50,4 +55,8 @@ print("Matrice de confusion :")
 print(cm)
 
 unique_labels = sorted(set(y_true) | set(y_pred))
-plots.plot_cm(cm, labels=[str(label) for label in unique_labels], out_filename="/home/onyxia/work/data/project/ma_cm.png")
+plots.plot_cm(
+    cm,
+    labels=[str(label) for label in unique_labels],
+    out_filename="/home/onyxia/work/data/project/ma_cm.png"
+    )
