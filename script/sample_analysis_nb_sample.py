@@ -1,20 +1,26 @@
+# -*- coding: utf-8 -*-
+"""
+@author: navarro leo, biou romain, sala mathieu
+"""
+
 import os
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from my_function import count_polygons_by_class, count_pixels_by_class, prepare_violin_plot_data
-import matplotlib.cm as cm
+from matplotlib import cm
 from matplotlib.colors import LogNorm
+from my_function import count_polygons_by_class, count_pixels_by_class, prepare_violin_plot_data
+
 import numpy as np
 
 # Définition des chemins des fichiers
-input_file = "/home/onyxia/work/projet_901_21/results/data/sample/Sample_BD_foret_T31TCJ.shp"
-output_dir = "/home/onyxia/work/projet_901_21/results/figure"
-diag_poly_file = os.path.join(output_dir, "diag_baton_nb_poly_by_class.png")
-diag_pix_file = os.path.join(output_dir, "diag_baton_nb_pix_by_class.png")
-violin_plot_file = os.path.join(output_dir, "violin_plot_nb_pix_by_poly_by_class.png")
+INPUT_FILE = "/home/onyxia/work/projet_901_21/results/data/sample/Sample_BD_foret_T31TCJ.shp"
+OUTPUT_DIR = "/home/onyxia/work/projet_901_21/results/figure"
+diag_poly_file = os.path.join(OUTPUT_DIR, "diag_baton_nb_poly_by_class.png")
+diag_pix_file = os.path.join(OUTPUT_DIR, "diag_baton_nb_pix_by_class.png")
+violin_plot_file = os.path.join(OUTPUT_DIR, "violin_plot_nb_pix_by_poly_by_class.png")
 
 # Charger les données du fichier Shapefile
-gdf = gpd.read_file(input_file)
+gdf = gpd.read_file(INPUT_FILE)
 
 # Liste des classes à analyser
 selected_classes = [11, 12, 13, 14, 21, 22, 23, 24, 25]
@@ -35,8 +41,8 @@ norm = LogNorm(vmin=min(counts), vmax=max(counts))
 colors = cm.Greens(norm(counts))
 
 # Création du diagramme en bâtons pour les polygones
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
 
 plt.figure(figsize=(12, 8))
 bars = plt.bar(class_names, counts, color=colors, edgecolor='black')
@@ -49,7 +55,7 @@ plt.tight_layout()
 # Ajouter des étiquettes sur chaque barre
 for bar, count in zip(bars, counts):
     plt.text(bar.get_x() + bar.get_width() / 2,  # Position horizontale centrée sur la barre
-             bar.get_height() + 1,              # Position verticale légèrement au-dessus de la barre
+             bar.get_height() + 1,              # Position verticale au-dessus de la barre
              str(count),                        # Texte affiché (nombre de polygones)
              ha='center', va='bottom', fontsize=10)
 
@@ -82,7 +88,7 @@ plt.tight_layout()
 # Ajouter des étiquettes sur chaque barre
 for bar, count in zip(bars, counts_pix):
     plt.text(bar.get_x() + bar.get_width() / 2,  # Position horizontale centrée sur la barre
-             bar.get_height() + 1,              # Position verticale légèrement au-dessus de la barre
+             bar.get_height() + 1,              # Position verticale au-dessus de la barre
              str(count),                        # Texte affiché (nombre de pixels)
              ha='center', va='bottom', fontsize=10)
 
@@ -93,8 +99,8 @@ plt.close()
 print(f"diag_baton_nb_pix_by_class sauvegardé dans {diag_pix_file}")
 
 # Calculer la surface de chaque polygone en pixels (adapté à la résolution du raster)
-resolution = 10  # Résolution spatiale utilisée pour le raster
-gdf["Nombre_de_pixels"] = (gdf.geometry.area / (resolution**2)).astype(int)
+RESOLUTION = 10  # Résolution spatiale utilisée pour le raster
+gdf["Nombre_de_pixels"] = (gdf.geometry.area / (RESOLUTION**2)).astype(int)
 
 # Préparer les données pour le "violin plot"
 violin_data = prepare_violin_plot_data(gdf, "Code", "Nombre_de_pixels")
@@ -119,13 +125,19 @@ for pc in violin_parts['bodies']:
     pc.set_alpha(0.7)
 
 # Ajouter des étiquettes et configurer l'échelle des axes
-plt.xticks(ticks=np.arange(1, len(classes) + 1), labels=classes, rotation=45, ha="right", fontsize=12)
+plt.xticks(
+    ticks=np.arange(1, len(classes) + 1),
+    labels=classes,
+    rotation=45,
+    ha="right",
+    fontsize=12
+    )
 plt.xlabel("Classes", fontsize=16)
 plt.ylabel("Nombre de pixels par polygone", fontsize=16)
 plt.title("Distribution du nombre de pixels par polygone, par classe", fontsize=18)
 plt.yscale('log')  # Utiliser une échelle logarithmique pour l'axe Y
 plt.yticks([1, 10, 100, 1000, 10000, 100000], ["0", "10", "100", "1k", "10k", "100k"])
-plt.gca().yaxis.set_minor_formatter(plt.FuncFormatter(lambda x, _: ""))  # Supprimer les ticks mineurs
+plt.gca().yaxis.set_minor_formatter(plt.FuncFormatter(lambda x, _: ""))  # Supprimer les ticks
 plt.tight_layout()
 
 # Sauvegarder la figure

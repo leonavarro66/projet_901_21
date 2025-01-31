@@ -13,10 +13,10 @@ sys.path.append('/home/onyxia/work/projet_901_21/script')
 from my_function import rasterize
 
 # Fichier de données nécessaire pour le masque
-my_data_folder = '/home/onyxia/work/data'
-my_result_folder_out = '/home/onyxia/work/projet_901_21/results/data'
-vector_filename = os.path.join(my_data_folder, 'project', 'FORMATION_VEGETALE.shp')
-emprise_filename = os.path.join(my_data_folder, 'project', 'emprise_etude.shp')
+MY_DATA_FOLDER = '/home/onyxia/work/data'
+MY_RESULT_FOLDER_OUT = '/home/onyxia/work/projet_901_21/results/data'
+vector_filename = os.path.join(MY_DATA_FOLDER, 'project', 'FORMATION_VEGETALE.shp')
+emprise_filename = os.path.join(MY_DATA_FOLDER, 'project', 'emprise_etude.shp')
 
 # Lecture du jeu de données de la bd_foret et de l'emprise d'etude
 bd_foret = gpd.read_file(vector_filename)
@@ -29,7 +29,7 @@ types_a_exclure = ['LA4', 'LA6', 'FO0', 'FO1', 'FO2', 'FO3', 'FF0']
 bd_foret['bin'] = bd_foret['CODE_TFV'].apply(lambda x: 1 if x not in types_a_exclure else 0)
 
 # Sauvegarde du shape modifié pour ensuite rasteriser
-bd_foret_filtree_filename = os.path.join(my_data_folder, 'project', 'bd_foret_filtree.shp')
+bd_foret_filtree_filename = os.path.join(MY_DATA_FOLDER, 'project', 'bd_foret_filtree.shp')
 bd_foret.to_file(bd_foret_filtree_filename)
 
 # Paramètres de rasterisation
@@ -44,4 +44,4 @@ spatial_res = 10  # Résolution spatiale de 10 m
 data_type = 'Byte'  # Type de données de sortie
 driver = 'GTiff'  # Format GeoTIFF
 
-rasterize(bd_foret_filtree_filename, emprise, out_image, spatial_res, data_type, driver, field_name)
+rasterize(bd_foret_filtree_filename, emprise, out_image, SPATIAL_RES, DATA_TYPE, DRIVER, FIELD_NAME)

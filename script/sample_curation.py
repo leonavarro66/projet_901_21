@@ -12,11 +12,11 @@ sys.path.append('/home/onyxia/work/projet_901_21/script')
 from my_function import classify_geodataframe, filter_and_clip_geodata
 
 # Fichier de données nécessaire pour le masque
-my_data_folder = '/home/onyxia/work/data'
-my_result_folder_out = '/home/onyxia/work/projet_901_21/results/data'
-vector_filename = os.path.join(my_data_folder, 'project', 'FORMATION_VEGETALE.shp')
-emprise_filename = os.path.join(my_data_folder, 'project', 'emprise_etude.shp')
-bd_foret_classee_decoupe_filename = os.path.join(my_result_folder_out, 'sample', 'Sample_BD_foret_T31TCJ.shp')
+MY_DATA_FOLDER = '/home/onyxia/work/data'
+MY_RESULT_FOLDER_OUT = '/home/onyxia/work/projet_901_21/results/data'
+vector_filename = os.path.join(MY_DATA_FOLDER, 'project', 'FORMATION_VEGETALE.shp')
+emprise_filename = os.path.join(MY_DATA_FOLDER, 'project', 'emprise_etude.shp')
+BD_FORET_CLAS_DEC_FILE = os.path.join(MY_RESULT_FOLDER_OUT, 'sample', 'Sample_BD_foret_T31TCJ.shp')
 
 if not os.path.exists(os.path.join(my_result_folder_out, 'sample')):
     os.makedirs(os.path.join(my_result_folder_out, 'sample'))
@@ -83,7 +83,7 @@ bd_foret_classee = classify_geodataframe(
 # Si le traitement est réussi, on découpe puis on enregistre.
 if bd_foret_classee is not None:
     # Appel de la fonction pour découper la bd foret classée par rapport à l'emprise
-    result = filter_and_clip_geodata(bd_foret_classee, emprise_filename, bd_foret_classee_decoupe_filename)
+    result = filter_and_clip_geodata(bd_foret_classee, emprise_filename, BD_FORET_CLAS_DEC_FILE)
     if result is not None:
         print("Traitement terminé avec succès.")
     else:
