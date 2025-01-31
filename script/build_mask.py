@@ -33,15 +33,15 @@ bd_foret_filtree_filename = os.path.join(MY_DATA_FOLDER, 'project', 'bd_foret_fi
 bd_foret.to_file(bd_foret_filtree_filename)
 
 # Paramètres de rasterisation
-out_image = os.path.join(my_result_folder_out, 'img_pretraitees', 'masque_foret.tif')  # Chemin vers l'image de sortie
+out_image = os.path.join(MY_RESULT_FOLDER_OUT, 'img_pretraitees', 'masque_foret.tif')  # Chemin vers l'image de sortie
 
-if not os.path.exists(os.path.join(my_result_folder_out, 'img_pretraitees')):
-    os.makedirs(os.path.join(my_result_folder_out, 'img_pretraitees'))
+if not os.path.exists(os.path.join(MY_RESULT_FOLDER_OUT, 'img_pretraitees')):
+    os.makedirs(os.path.join(MY_RESULT_FOLDER_OUT, 'img_pretraitees'))
 
 
-field_name = 'bin'  # Champ contenant les valeurs de rasterisation
-spatial_res = 10  # Résolution spatiale de 10 m
-data_type = 'Byte'  # Type de données de sortie
-driver = 'GTiff'  # Format GeoTIFF
+FIELD_NAME = 'bin'  # Champ contenant les valeurs de rasterisation
+SPATIAL_RES = 10  # Résolution spatiale de 10 m
+DATA_TYPE = 'Byte'  # Type de données de sortie
+DRIVER = 'GTiff'  # Format GeoTIFF
 
 rasterize(bd_foret_filtree_filename, emprise, out_image, SPATIAL_RES, DATA_TYPE, DRIVER, FIELD_NAME)

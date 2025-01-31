@@ -58,5 +58,5 @@ unique_labels = sorted(set(y_true) | set(y_pred))
 plots.plot_cm(
     cm,
     labels=[str(label) for label in unique_labels],
-    out_filename="/home/onyxia/work/data/project/ma_cm.png"
+    out_filename="/home/onyxia/work/data/project/tmp_classif/cm_classif_stand.png"
     )
