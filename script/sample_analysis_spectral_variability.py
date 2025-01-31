@@ -1,4 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+@author: navarro leo, biou romain, sala mathieu
+"""
+
 import os
+import sys
 import geopandas as gpd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,18 +12,19 @@ from osgeo import gdal
 import pandas as pd
 sys.path.append('/home/onyxia/work/projet_901_21/script')
 from my_function import calculate_distance
-# Charger les données shapefile
-bd_foret_class = "/home/onyxia/work/projet_901_21/results/data/sample/Sample_BD_foret_T31TCJ.shp"
-output_path = "/home/onyxia/work/projet_901_21/results/figure"
-os.makedirs(output_path, exist_ok=True)
-output_1 = os.path.join(output_path, "diag_baton_dist_centroide_classe.png")
-output_2 = os.path.join(output_path, "violin_plot_dist_centroide_by_poly_by_class.png")
 
-data = gpd.read_file(bd_foret_class)
+# Charger les données shapefile
+BD_FORET_CLASS = "/home/onyxia/work/projet_901_21/results/data/sample/Sample_BD_foret_T31TCJ.shp"
+OUTPUT_PATH = "/home/onyxia/work/projet_901_21/results/figure"
+os.makedirs(OUTPUT_PATH, exist_ok=True)
+output_1 = os.path.join(OUTPUT_PATH, "diag_baton_dist_centroide_classe.png")
+output_2 = os.path.join(OUTPUT_PATH, "violin_plot_dist_centroide_by_poly_by_class.png")
+
+data = gpd.read_file(BD_FORET_CLASS)
 
 # Charger le raster NDVI avec GDAL
-ndvi_all_bands_path = "/home/onyxia/work/projet_901_21/results/data/img_pretraitees/Serie_temp_S2_ndvi.tif"
-dataset = gdal.Open(ndvi_all_bands_path)
+NDVI_PATH = "/home/onyxia/work/projet_901_21/results/data/img_pretraitees/Serie_temp_S2_ndvi.tif"
+dataset = gdal.Open(NDVI_PATH)
 
 # Lire la première bande du raster NDVI
 band = dataset.GetRasterBand(1)
@@ -88,7 +95,11 @@ plt.figure(figsize=(10, 6))
 class_names = [classes_bleues.get(code, classes_rouges.get(code, "Inconnue")) for code in mean_distances.keys()]
 
 # Créer le graphique
-bars = plt.bar(class_names, mean_distances.values(), color=["royalblue" if code in classes_bleues else "indianred" for code in mean_distances.keys()])
+bars = plt.bar(
+    class_names,
+    mean_distances.values(),
+    color=["blue" if code in classes_bleues else "red" for code in mean_distances.keys()]
+    )
 plt.xlabel("Classe")
 plt.ylabel("Distance moyenne au centroïde (mètres)")
 plt.title("Distance moyenne au centroïde par classe")
@@ -97,7 +108,14 @@ plt.xticks(rotation=45, ha="right")
 # Ajouter les étiquettes avec les valeurs sur les barres
 for bar in bars:
     yval = bar.get_height()
-    plt.text(bar.get_x() + bar.get_width() / 2, yval + 0.1, f'{yval:.2f}', ha='center', va='bottom', fontsize=10)
+    plt.text(
+        bar.get_x() + bar.get_width() / 2,
+        yval + 0.1,
+        f'{yval:.2f}',
+        ha='center',
+        va='bottom',
+        fontsize=10
+        )
 
 plt.tight_layout()
 
@@ -142,10 +160,16 @@ plt.figure(figsize=(12, 8))
 for idx, class_name in enumerate(polygon_distances_df["Classe"].unique()):
     class_distances = polygon_distances_df[polygon_distances_df["Classe"] == class_name]["Distance moyenne"].dropna()
     if not class_distances.empty:
-        violon = plt.violinplot(class_distances, positions=[idx], showmeans=True, showextrema=True, widths=0.7)
-        color = "royalblue" if class_name in classes_bleues else "indianred"
+        violon = plt.violinplot(
+            class_distances,
+            positions=[idx],
+            showmeans=True,
+            showextrema=True,
+            widths=0.7
+            )
+        COLOR = "blue" if class_name in classes_bleues else "red"
         for body in violon['bodies']:
-            body.set_facecolor(color)
+            body.set_facecolor(COLOR)
             body.set_edgecolor("black")
 
 plt.xticks(range(len(polygon_distances_df["Classe"].unique())), polygon_distances_df["Classe"].unique(), rotation=45, ha="right")
